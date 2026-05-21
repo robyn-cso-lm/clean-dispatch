@@ -1,0 +1,227 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Client {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  phone         String
+  name          String
+  address       String
+  city          String
+  county        String
+  zipCode       String
+  stripeCustomerId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  jobs          Job[]
+  payments      Payment[]
+}
+
+model Cleaner {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  phone         String
+  name          String
+  profilePhoto  String?
+  backgroundCheckStatus String @default("pending")
+  bankAccount   String?
+  hourlyRate    Float    @default(20)
+  gasFee        Float    @default(8)
+  rating        Float    @default(5)
+  reviewCount   Int      @default(0)
+  totalHours    Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  availability  Availability[]
+  jobs          JobAssignment[]
+  beforeAfterPhotos BeforeAfterPhoto[]
+  reviews       Review[]
+  payouts       CleanerPayout[]
+  references    CleanerReference[]
+}
+
+model Availability {
+  id        String   @id @default(cuid())
+  cleanerId String
+  cleaner   Cleaner  @relation(fields: [cleanerId], references: [id], onDelete: Cascade)
+
+  dayOfWeek Int
+  startTime String
+  endTime   String
+  isAvailable Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cleanerId, dayOfWeek])
+}
+
+model ServiceType {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  basePrice Float
+  multiplier Float   @default(1.0)
+}
+
+model AddOn {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  price     Float
+  timeRequired Int
+
+  jobAddOns JobAddOn[]
+}
+
+model Job {
+  id            String   @id @default(cuid())
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  serviceType   String
+  squareFeet    Int
+  bedrooms      Int
+  bathrooms     Int
+  specialRequests String?
+
+  estimatedHours Float
+  quoteAmount   Float
+
+  scheduledDate DateTime
+  scheduledTime String
+
+  status        String   @default("quoted")
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  addOns        JobAddOn[]
+  assignment    JobAssignment?
+  payment       Payment?
+  review        Review?
+  beforeAfterPhotos BeforeAfterPhoto[]
+}
+
+model JobAddOn {
+  id        String   @id @default(cuid())
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  addOnId   String
+  addOn     AddOn    @relation(fields: [addOnId], references: [id])
+
+  @@unique([jobId, addOnId])
+}
+
+model JobAssignment {
+  id        String   @id @default(cuid())
+  jobId     String   @unique
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  cleanerId String
+  cleaner   Cleaner  @relation(fields: [cleanerId], references: [id])
+
+  status    String   @default("pending")
+  actualHours Float?
+  startTime DateTime?
+  endTime   DateTime?
+  onHold    Boolean  @default(false)
+  holdReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  paymentHold PaymentHold?
+}
+
+model BeforeAfterPhoto {
+  id        String   @id @default(cuid())
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  cleanerId String
+  cleaner   Cleaner  @relation(fields: [cleanerId], references: [id])
+
+  beforePhoto String
+  afterPhoto  String?
+
+  createdAt DateTime @default(now())
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  jobId         String   @unique
+  job           Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id])
+
+  amount        Float
+  stripePaymentIntentId String @unique
+  status        String   @default("pending")
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model CleanerPayout {
+  id        String   @id @default(cuid())
+  cleanerId String
+  cleaner   Cleaner  @relation(fields: [cleanerId], references: [id])
+
+  amount    Float
+  period    String
+  status    String   @default("pending")
+  stripePayout String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  jobId     String   @unique
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  cleanerId String
+  cleaner   Cleaner  @relation(fields: [cleanerId], references: [id])
+
+  rating    Int
+  comment   String?
+
+  createdAt DateTime @default(now())
+}
+
+model CleanerReference {
+  id        String   @id @default(cuid())
+  cleanerId String
+  cleaner   Cleaner  @relation(fields: [cleanerId], references: [id], onDelete: Cascade)
+
+  referenceName String
+  phone         String
+  email         String
+  relationship  String // "employer", "previous_client", "colleague", etc.
+  comment       String?
+  verified      Boolean @default(false)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model PaymentHold {
+  id                String   @id @default(cuid())
+  assignmentId      String   @unique
+  assignment        JobAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  reason            String   // "time_overrun", "additional_charges", etc.
+  estimatedHours    Float
+  actualHours       Float
+  additionalCharge  Float
+  clientApproved    Boolean  @default(false)
+  approvalRequestSent Boolean @default(false)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
