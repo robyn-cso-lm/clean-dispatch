@@ -1,13 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { calculateQuote } from '@/lib/quoteCalculator';
+import { calculateQuote, type QuoteRequest } from '@/lib/quoteCalculator';
 
 export default function ClientQuotePage() {
   const [step, setStep] = useState<'details' | 'addons' | 'schedule' | 'payment'>('details');
 
-  const [formData, setFormData] = useState({
-    serviceType: 'standard' as const,
+  const [formData, setFormData] = useState<{
+    serviceType: QuoteRequest['serviceType'];
+    squareFeet: number;
+    bedrooms: number;
+    bathrooms: number;
+  }>({
+    serviceType: 'standard',
     squareFeet: 1500,
     bedrooms: 3,
     bathrooms: 2,
