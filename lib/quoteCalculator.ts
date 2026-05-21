@@ -1,5 +1,5 @@
 export interface QuoteRequest {
-  serviceType: "standard" | "deep" | "move-in" | "move-out";
+  serviceType: "standard" | "deep" | "move-in" | "move-out" | "airbnb";
   squareFeet: number;
   bedrooms: number;
   bathrooms: number;
@@ -11,6 +11,7 @@ const SERVICE_MULTIPLIERS: Record<string, number> = {
   deep: 1.5,
   "move-in": 1.75,
   "move-out": 1.75,
+  airbnb: 1.25, // turnover clean — thorough but focused
 };
 
 const ADD_ON_PRICES: Record<string, number> = {
@@ -18,6 +19,8 @@ const ADD_ON_PRICES: Record<string, number> = {
   oven: 40,
   blinds: 30,
   laundry: 45,
+  linens: 35,  // full linen change — all beds
+  restock: 20, // restock soaps, TP, paper towels
 };
 
 const BASE_PRICE = 50;

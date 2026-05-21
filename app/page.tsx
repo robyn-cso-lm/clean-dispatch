@@ -11,10 +11,13 @@ export default function Home() {
           Professional cleaning,{' '}
           <span className="text-green-600">instantly booked</span>
         </h1>
-        <p className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto">
+        <p className="text-xl text-gray-600 mb-6 max-w-2xl mx-auto">
           Get an instant quote, pick your time, and a vetted cleaner handles the rest.
           No phone calls. No guessing. Just a clean home.
         </p>
+        <div className="inline-flex items-center gap-2 bg-green-100 text-green-800 text-sm font-semibold px-4 py-2 rounded-full mb-8">
+          <span>🏡</span> Now offering Airbnb &amp; short-term rental turnovers
+        </div>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link
             href="/client/quote"
@@ -44,6 +47,7 @@ export default function Home() {
               {[
                 'Instant online quote',
                 'Book in 2 minutes',
+                'Airbnb & STR turnovers welcome',
                 'Professional & vetted cleaners',
               ].map((item) => (
                 <li key={item} className="flex items-center gap-3">

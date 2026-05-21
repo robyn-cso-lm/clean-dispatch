@@ -17,12 +17,21 @@ export default function ClientQuotePage() {
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('09:00');
 
-  const addOns = [
+  const standardAddOns = [
     { id: 'fridge', name: 'Fridge Deep Clean', price: 50 },
     { id: 'oven', name: 'Oven Clean', price: 40 },
     { id: 'blinds', name: 'Blinds Cleaning', price: 30 },
     { id: 'laundry', name: 'Laundry Service', price: 45 },
   ];
+
+  const airbnbAddOns = [
+    { id: 'linens', name: 'Full Linen Change (all beds)', price: 35 },
+    { id: 'restock', name: 'Restock Supplies (soaps, TP, towels)', price: 20 },
+    { id: 'fridge', name: 'Fridge Clean-Out', price: 50 },
+    { id: 'oven', name: 'Oven Clean', price: 40 },
+  ];
+
+  const addOns = formData.serviceType === 'airbnb' ? airbnbAddOns : standardAddOns;
 
   const steps = ['details', 'addons', 'schedule', 'payment'] as const;
   const stepLabels = ['Details', 'Add-ons', 'Schedule', 'Pay'];
@@ -101,6 +110,7 @@ export default function ClientQuotePage() {
                     >
                       <option value="standard">Standard Clean</option>
                       <option value="deep">Deep Clean</option>
+                      <option value="airbnb">Airbnb / Short-Term Rental Turnover</option>
                       <option value="move-in">Move-In Clean</option>
                       <option value="move-out">Move-Out Clean</option>
                     </select>
