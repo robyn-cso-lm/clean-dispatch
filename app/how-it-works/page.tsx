@@ -194,7 +194,7 @@ export default function HowItWorks() {
               },
               {
                 q: 'What if my cleaner cancels?',
-                a: 'We assign a replacement immediately. You get notified with the new cleaner's details and photo.',
+                a: "We assign a replacement immediately. You get notified with the new cleaner's details and photo.",
               },
               {
                 q: 'What if I need additional services?',
@@ -210,7 +210,7 @@ export default function HowItWorks() {
               },
               {
                 q: 'What if the job takes longer than estimated?',
-                a: 'We notify you with the additional charge and request approval before releasing the cleaner's payment. You approve or deny.',
+                a: "We notify you with the additional charge and request approval before releasing the cleaner's payment. You approve or deny.",
               },
             ].map((item, i) => (
               <div key={i} className="border border-gray-200 rounded-lg p-6">
