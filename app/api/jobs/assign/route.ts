@@ -1,83 +1,84 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { notifyUser } from '@/lib/notifications';
 
-// This route auto-assigns jobs to available cleaners
-// Called when a job is confirmed by a client
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { jobId, scheduledDate, scheduledTime } = body;
+    const { jobId } = body;
 
-    // In production:
-    // 1. Get job details
-    // 2. Parse scheduled date/time
-    // 3. Find cleaners with matching availability
-    // 4. Select closest cleaner (by location)
-    // 5. Create JobAssignment with status 'pending'
-    // 6. Send notification to cleaner (email/SMS)
+    const job = await prisma.job.findUnique({
+      where: { id: jobId },
+      include: { client: true },
+    });
 
-    // const job = await prisma.job.findUnique({
-    //   where: { id: jobId },
-    //   include: { client: true }
-    // });
+    if (!job) {
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+    }
 
-    // Get day of week from scheduledDate
-    // const date = new Date(scheduledDate);
-    // const dayOfWeek = date.getDay();
+    const dayOfWeek = job.scheduledDate.getDay();
 
-    // Find available cleaners
-    // const availableCleaner = await prisma.cleaner.findFirst({
-    //   where: {
-    //     backgroundCheckStatus: 'approved',
-    //     availability: {
-    //       some: {
-    //         dayOfWeek: dayOfWeek,
-    //         isAvailable: true,
-    //         startTime: { lte: scheduledTime },
-    //         endTime: { gte: scheduledTime }
-    //       }
-    //     }
-    //   },
-    //   orderBy: {
-    //     rating: 'desc',
-    //   }
-    // });
+    const availableCleaner = await prisma.cleaner.findFirst({
+      where: {
+        backgroundCheckStatus: 'approved',
+        availability: {
+          some: {
+            dayOfWeek,
+            isAvailable: true,
+            startTime: { lte: job.scheduledTime },
+            endTime: { gte: job.scheduledTime },
+          },
+        },
+        // Exclude cleaners already assigned on the same date
+        jobs: {
+          none: {
+            job: {
+              scheduledDate: job.scheduledDate,
+              status: { in: ['assigned', 'accepted'] },
+            },
+          },
+        },
+      },
+      orderBy: { rating: 'desc' },
+    });
 
-    // if (!availableCleaner) {
-    //   return NextResponse.json(
-    //     { error: 'No available cleaners', fallback: true },
-    //     { status: 202 }
-    //   );
-    // }
+    if (!availableCleaner) {
+      return NextResponse.json(
+        { error: 'No available cleaners for this slot. An admin will assign manually.', fallback: true },
+        { status: 202 }
+      );
+    }
 
-    // Create assignment
-    // const assignment = await prisma.jobAssignment.create({
-    //   data: {
-    //     jobId,
-    //     cleanerId: availableCleaner.id,
-    //     status: 'pending'
-    //   }
-    // });
+    const assignment = await prisma.jobAssignment.create({
+      data: { jobId, cleanerId: availableCleaner.id, status: 'pending' },
+    });
 
-    // // Update job status
-    // await prisma.job.update({
-    //   where: { id: jobId },
-    //   data: { status: 'assigned' }
-    // });
+    await prisma.job.update({
+      where: { id: jobId },
+      data: { status: 'assigned' },
+    });
+
+    notifyUser(
+      availableCleaner.email,
+      availableCleaner.phone,
+      'job_assigned',
+      {
+        serviceType: job.serviceType,
+        clientName: job.client.name,
+        address: job.client.address,
+        date: job.scheduledDate.toLocaleDateString(),
+        time: job.scheduledTime,
+        estimatedHours: job.estimatedHours,
+        total: job.quoteAmount,
+      }
+    ).catch(err => console.error('Cleaner notification failed:', err));
 
     return NextResponse.json(
-      {
-        success: true,
-        assignmentId: 'temp-assignment-id',
-        cleanerId: 'temp-cleaner-id',
-        message: 'Job assigned to cleaner',
-      },
+      { success: true, assignmentId: assignment.id, cleanerId: availableCleaner.id, message: 'Job assigned to cleaner' },
       { status: 201 }
     );
   } catch (error) {
     console.error('Job assignment error:', error);
-    return NextResponse.json(
-      { error: 'Failed to assign job' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to assign job' }, { status: 500 });
   }
 }
