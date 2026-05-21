@@ -4,9 +4,10 @@ import Link from 'next/link';
 
 export default function HowItWorks() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 py-12">
+    <div className="bg-gray-50">
+      {/* Page header */}
+      <div className="bg-white border-b border-gray-100">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <h1 className="text-4xl font-bold text-gray-900">How CleanDispatch Works</h1>
           <p className="text-xl text-gray-600 mt-2">
             The fastest way to book a professional cleaner in Tampa Bay
@@ -14,12 +15,12 @@ export default function HowItWorks() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-16">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {/* For Clients */}
         <div className="mb-20">
           <h2 className="text-3xl font-bold text-gray-900 mb-12">For Clients</h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {[
               {
                 num: '1',
@@ -45,10 +46,10 @@ export default function HowItWorks() {
                 description: 'Your vetted cleaner arrives on time. You get before/after photos.',
                 icon: '✨',
               },
-            ].map((step, i) => (
-              <div key={i} className="bg-white rounded-lg p-8 shadow-sm">
+            ].map((step) => (
+              <div key={step.num} className="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
                 <div className="text-5xl mb-4">{step.icon}</div>
-                <div className="text-3xl font-bold text-blue-600 mb-3">Step {step.num}</div>
+                <div className="text-2xl font-bold text-green-600 mb-3">Step {step.num}</div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">{step.title}</h3>
                 <p className="text-gray-600">{step.description}</p>
               </div>
@@ -58,7 +59,7 @@ export default function HowItWorks() {
           <div className="mt-12 text-center">
             <Link
               href="/client/quote"
-              className="inline-block bg-blue-600 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-blue-700"
+              className="inline-block bg-green-600 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-green-700 transition-colors"
             >
               Get Your Free Quote Now
             </Link>
@@ -66,7 +67,7 @@ export default function HowItWorks() {
         </div>
 
         {/* Benefits for Clients */}
-        <div className="mb-20 bg-blue-50 rounded-lg p-12">
+        <div className="mb-20 bg-green-50 rounded-xl p-12">
           <h3 className="text-2xl font-bold text-gray-900 mb-8">Why Clients Love Us</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {[
@@ -76,9 +77,9 @@ export default function HowItWorks() {
               { title: 'Quality Guaranteed', desc: 'Before/after photos. 5-star rating system keeps cleaners accountable.' },
               { title: 'Flexible Scheduling', desc: 'Book up to 4 weeks in advance. Cancel anytime.' },
               { title: 'Auto-Protection', desc: 'If a job runs over, we protect you from surprise charges.' },
-            ].map((benefit, i) => (
-              <div key={i} className="flex gap-4">
-                <div className="text-3xl">✓</div>
+            ].map((benefit) => (
+              <div key={benefit.title} className="flex gap-4">
+                <span className="text-green-600 font-bold text-xl mt-0.5">✓</span>
                 <div>
                   <h4 className="font-semibold text-gray-900">{benefit.title}</h4>
                   <p className="text-gray-700">{benefit.desc}</p>
@@ -93,57 +94,57 @@ export default function HowItWorks() {
           <h2 className="text-3xl font-bold text-gray-900 mb-12">For Cleaners</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-            <div className="bg-white rounded-lg p-8 shadow-sm">
+            <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">How You Get Jobs</h3>
               <ol className="space-y-4">
-                <li className="flex gap-4">
-                  <span className="text-xl font-bold text-green-600">1.</span>
-                  <div>
-                    <p className="font-semibold text-gray-900">Set Your Availability</p>
-                    <p className="text-sm text-gray-600">Tell us your work schedule (e.g., Mon-Fri 8am-5pm)</p>
-                  </div>
-                </li>
-                <li className="flex gap-4">
-                  <span className="text-xl font-bold text-green-600">2.</span>
-                  <div>
-                    <p className="font-semibold text-gray-900">Auto-Assigned Jobs</p>
-                    <p className="text-sm text-gray-600">
-                      We match you with nearby jobs that fit your schedule. You get email + SMS notification.
-                    </p>
-                  </div>
-                </li>
-                <li className="flex gap-4">
-                  <span className="text-xl font-bold text-green-600">3.</span>
-                  <div>
-                    <p className="font-semibold text-gray-900">Accept or Decline (2-3 min window)</p>
-                    <p className="text-sm text-gray-600">No pressure. Decline if you're busy, we assign someone else.</p>
-                  </div>
-                </li>
-                <li className="flex gap-4">
-                  <span className="text-xl font-bold text-green-600">4.</span>
-                  <div>
-                    <p className="font-semibold text-gray-900">Show Up & Earn</p>
-                    <p className="text-sm text-gray-600">$20/hr + $8/job gas fee. Payment automatic every Friday.</p>
-                  </div>
-                </li>
+                {[
+                  {
+                    step: '1.',
+                    title: 'Set Your Availability',
+                    desc: 'Tell us your work schedule (e.g., Mon–Fri 8am–5pm)',
+                  },
+                  {
+                    step: '2.',
+                    title: 'Auto-Assigned Jobs',
+                    desc: 'We match you with nearby jobs that fit your schedule. You get email + SMS notification.',
+                  },
+                  {
+                    step: '3.',
+                    title: 'Accept or Decline (2–3 min window)',
+                    desc: 'No pressure. Decline if you\'re busy, we assign someone else.',
+                  },
+                  {
+                    step: '4.',
+                    title: 'Show Up & Earn',
+                    desc: '$20/hr + $8/job gas fee. Payment automatic every Friday.',
+                  },
+                ].map((item) => (
+                  <li key={item.step} className="flex gap-4">
+                    <span className="text-xl font-bold text-green-600 mt-0.5">{item.step}</span>
+                    <div>
+                      <p className="font-semibold text-gray-900">{item.title}</p>
+                      <p className="text-sm text-gray-600">{item.desc}</p>
+                    </div>
+                  </li>
+                ))}
               </ol>
             </div>
 
-            <div className="bg-green-50 rounded-lg p-8">
+            <div className="bg-green-50 rounded-xl p-8">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">Your Earnings</h3>
               <div className="space-y-4">
-                <div className="bg-white p-4 rounded">
+                <div className="bg-white p-4 rounded-lg">
                   <p className="text-sm text-gray-600">Hourly Rate</p>
                   <p className="text-3xl font-bold text-green-600">$20/hour</p>
                 </div>
-                <div className="bg-white p-4 rounded">
+                <div className="bg-white p-4 rounded-lg">
                   <p className="text-sm text-gray-600">Gas Fee (per job)</p>
                   <p className="text-3xl font-bold text-green-600">$8/job</p>
                 </div>
-                <div className="bg-white p-4 rounded border-2 border-green-500">
+                <div className="bg-white p-4 rounded-lg border-2 border-green-500">
                   <p className="text-sm text-gray-600">Example: 4 jobs/week</p>
                   <p className="text-3xl font-bold text-green-600">$1,152/month</p>
-                  <p className="text-xs text-gray-600 mt-2">4 jobs × 3h × $20/hr + $32 gas = $288/week</p>
+                  <p className="text-xs text-gray-500 mt-2">4 jobs × 3h × $20/hr + $32 gas = $288/week</p>
                 </div>
               </div>
             </div>
@@ -152,7 +153,7 @@ export default function HowItWorks() {
           <div className="text-center">
             <Link
               href="/cleaner/signup"
-              className="inline-block bg-green-600 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-green-700"
+              className="inline-block bg-gray-900 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-gray-800 transition-colors"
             >
               Start Earning Now
             </Link>
@@ -160,7 +161,7 @@ export default function HowItWorks() {
         </div>
 
         {/* Why Choose */}
-        <div className="bg-green-50 rounded-lg p-12">
+        <div className="bg-green-50 rounded-xl p-12 mb-20">
           <h3 className="text-2xl font-bold text-gray-900 mb-8">Why Cleaners Choose CleanDispatch</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {[
@@ -170,9 +171,9 @@ export default function HowItWorks() {
               { title: 'Build Your Reputation', desc: 'Earn 5-star reviews. Repeat clients = steady income.' },
               { title: 'We Have Your Back', desc: 'If a job runs over, we get client approval for extra charges.' },
               { title: 'Community of Professionals', desc: 'Join vetted cleaners across Tampa Bay.' },
-            ].map((benefit, i) => (
-              <div key={i} className="flex gap-4">
-                <div className="text-3xl">✓</div>
+            ].map((benefit) => (
+              <div key={benefit.title} className="flex gap-4">
+                <span className="text-green-600 font-bold text-xl mt-0.5">✓</span>
                 <div>
                   <h4 className="font-semibold text-gray-900">{benefit.title}</h4>
                   <p className="text-gray-700">{benefit.desc}</p>
@@ -182,15 +183,15 @@ export default function HowItWorks() {
           </div>
         </div>
 
-        {/* FAQ-style */}
-        <div className="mt-20">
+        {/* FAQ */}
+        <div className="mb-20">
           <h2 className="text-3xl font-bold text-gray-900 mb-12">Frequently Asked Questions</h2>
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             {[
               {
                 q: 'How soon can I get my home cleaned?',
-                a: 'You can book up to 4 weeks in advance. Most homes get cleaned within 1-2 weeks.',
+                a: 'You can book up to 4 weeks in advance. Most homes get cleaned within 1–2 weeks.',
               },
               {
                 q: 'What if my cleaner cancels?',
@@ -212,8 +213,8 @@ export default function HowItWorks() {
                 q: 'What if the job takes longer than estimated?',
                 a: "We notify you with the additional charge and request approval before releasing the cleaner's payment. You approve or deny.",
               },
-            ].map((item, i) => (
-              <div key={i} className="border border-gray-200 rounded-lg p-6">
+            ].map((item) => (
+              <div key={item.q} className="bg-white rounded-xl border border-gray-200 p-6">
                 <h4 className="font-semibold text-gray-900 mb-2">{item.q}</h4>
                 <p className="text-gray-600">{item.a}</p>
               </div>
@@ -221,22 +222,22 @@ export default function HowItWorks() {
           </div>
         </div>
 
-        {/* CTA */}
-        <div className="mt-20 bg-gradient-to-r from-blue-600 to-green-600 rounded-lg p-12 text-center text-white">
+        {/* Final CTA */}
+        <div className="bg-green-600 rounded-xl p-12 text-center text-white">
           <h3 className="text-3xl font-bold mb-4">Ready to Get Started?</h3>
-          <p className="text-xl mb-8 text-blue-100">
-            Join thousands of happy clients and cleaners in Tampa Bay
+          <p className="text-xl mb-8 text-green-100">
+            Book a cleaner or start earning — both take less than 5 minutes.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/client/quote"
-              className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-blue-50"
+              className="bg-white text-green-700 px-8 py-3 rounded-lg font-semibold hover:bg-green-50 transition-colors"
             >
               Book a Cleaner
             </Link>
             <Link
               href="/cleaner/signup"
-              className="bg-white text-green-600 px-8 py-3 rounded-lg font-semibold hover:bg-green-50"
+              className="bg-green-700 text-white border border-green-500 px-8 py-3 rounded-lg font-semibold hover:bg-green-800 transition-colors"
             >
               Become a Cleaner
             </Link>
