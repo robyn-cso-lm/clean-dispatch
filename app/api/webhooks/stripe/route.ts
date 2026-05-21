@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     await prisma.payment.update({
       where: { stripePaymentIntentId: paymentIntent.id },
       data: { status: 'failed' },
-    }).catch(err => console.error('Failed to update payment status:', err));
+    }).catch((err: unknown) => console.error('Failed to update payment status:', err));
 
     console.log(`Payment failed for job ${jobId}`);
   }
