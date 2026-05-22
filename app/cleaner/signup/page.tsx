@@ -3,369 +3,255 @@
 import { useState } from 'react';
 
 export default function CleanerSignupPage() {
-  const [step, setStep] = useState<'personal' | 'references' | 'availability' | 'photos' | 'bank'>('personal');
+  const [step, setStep] = useState<'personal' | 'availability' | 'done'>('personal');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
   const [formData, setFormData] = useState({
+    name: '',
     email: '',
     phone: '',
-    name: '',
-    address: '',
-    city: '',
-    county: '',
-    zipCode: '',
   });
 
-  const [availability, setAvailability] = useState<Record<number, { start: string; end: string }>>({
-    1: { start: '08:00', end: '17:00' },
-    2: { start: '08:00', end: '17:00' },
-    3: { start: '08:00', end: '17:00' },
-    4: { start: '08:00', end: '17:00' },
-    5: { start: '08:00', end: '17:00' },
+  const [availability, setAvailability] = useState<Record<number, { start: string; end: string; enabled: boolean }>>({
+    1: { start: '08:00', end: '17:00', enabled: true },
+    2: { start: '08:00', end: '17:00', enabled: true },
+    3: { start: '08:00', end: '17:00', enabled: true },
+    4: { start: '08:00', end: '17:00', enabled: true },
+    5: { start: '08:00', end: '17:00', enabled: true },
+    6: { start: '09:00', end: '14:00', enabled: false },
+    0: { start: '09:00', end: '14:00', enabled: false },
   });
 
-  const [bankAccount, setBankAccount] = useState('');
+  const days = [
+    { key: 1, label: 'Monday' },
+    { key: 2, label: 'Tuesday' },
+    { key: 3, label: 'Wednesday' },
+    { key: 4, label: 'Thursday' },
+    { key: 5, label: 'Friday' },
+    { key: 6, label: 'Saturday' },
+    { key: 0, label: 'Sunday' },
+  ];
 
-  const [references, setReferences] = useState([
-    { name: '', phone: '', email: '', relationship: 'previous_client', comment: '' },
-    { name: '', phone: '', email: '', relationship: 'previous_client', comment: '' },
-  ]);
+  function validate() {
+    if (!formData.name.trim()) return 'Please enter your name.';
+    if (!formData.email.trim() || !formData.email.includes('@')) return 'Please enter a valid email.';
+    if (!formData.phone.trim()) return 'Please enter your phone number.';
+    return '';
+  }
 
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+  async function handleSubmit() {
+    const validationError = validate();
+    if (validationError) { setError(validationError); return; }
+    setError('');
+    setSubmitting(true);
+
+    const enabledDays = Object.fromEntries(
+      Object.entries(availability)
+        .filter(([, v]) => v.enabled)
+        .map(([k, v]) => [k, { start: v.start, end: v.end }])
+    );
+
+    try {
+      const res = await fetch('/api/cleaners/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
+          availability: enabledDays,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error ?? 'Something went wrong. Please try again.');
+        return;
+      }
+
+      setStep('done');
+    } catch {
+      setError('Network error. Please check your connection and try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (step === 'done') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Application Received!</h2>
+          <p className="text-gray-600 mb-4">
+            Thanks, <strong>{formData.name.split(' ')[0]}</strong>! We&apos;ll review your application and be in touch within 24–48 hours.
+          </p>
+          <p className="text-sm text-gray-500">
+            Check your email at <strong>{formData.email}</strong> for next steps.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-2xl mx-auto px-4 py-12">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Become a Cleaner</h1>
-        <p className="text-gray-600 mb-8">Join our network and start earning $20/hour + $8/job</p>
+        <p className="text-gray-600 mb-8">Earn $20/hr + $8/job gas fee. Flexible hours. Weekly pay.</p>
 
-        {/* Step Indicator */}
-        <div className="flex gap-4 mb-8">
-          {['personal', 'references', 'availability', 'photos', 'bank'].map((s, i) => (
-            <div
-              key={s}
-              className={`flex-1 h-2 rounded ${
-                step === s ? 'bg-green-600' : 'bg-gray-200'
-              }`}
-            />
+        {/* Step progress */}
+        <div className="flex items-center gap-3 mb-8">
+          {(['personal', 'availability'] as const).map((s, i) => (
+            <div key={s} className="flex items-center gap-3">
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                step === s ? 'bg-green-600 text-white' : step === 'done' || (i === 0 && step === 'availability') ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'
+              }`}>
+                {i === 0 && step === 'availability' ? '✓' : i + 1}
+              </div>
+              <span className={`text-sm font-medium ${step === s ? 'text-gray-900' : 'text-gray-400'}`}>
+                {s === 'personal' ? 'Your Info' : 'Availability'}
+              </span>
+              {i < 1 && <div className={`w-8 h-0.5 ${step === 'availability' ? 'bg-green-400' : 'bg-gray-200'}`} />}
+            </div>
           ))}
         </div>
 
-        <div className="bg-white rounded-lg shadow p-8">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
           {step === 'personal' && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-900">Personal Information</h2>
+            <div className="space-y-5">
+              <h2 className="text-xl font-semibold text-gray-900">Your Information</h2>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Full Name
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
                 <input
                   type="text"
+                  placeholder="Jane Smith"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
                 <input
                   type="email"
+                  placeholder="jane@example.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone Number</label>
                 <input
                   type="tel"
+                  placeholder="(813) 555-1234"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Address
-                </label>
-                <input
-                  type="text"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    City
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Zip Code
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.zipCode}
-                    onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  County
-                </label>
-                <select
-                  value={formData.county}
-                  onChange={(e) => setFormData({ ...formData, county: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                >
-                  <option value="">Select county</option>
-                  <option value="Hillsborough">Hillsborough</option>
-                  <option value="Manatee">Manatee</option>
-                </select>
-              </div>
+              {error && (
+                <p className="text-red-600 text-sm bg-red-50 px-4 py-2 rounded-lg">{error}</p>
+              )}
 
               <button
-                onClick={() => setStep('references')}
-                className="w-full bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700"
+                onClick={() => {
+                  const err = validate();
+                  if (err) { setError(err); return; }
+                  setError('');
+                  setStep('availability');
+                }}
+                className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
               >
-                Continue
+                Continue →
               </button>
-            </div>
-          )}
 
-          {step === 'references' && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-900">Professional References</h2>
-              <p className="text-gray-600 text-sm">Provide 2 references from previous clients or employers</p>
-
-              <div className="space-y-6">
-                {references.map((ref, i) => (
-                  <div key={i} className="border border-gray-200 rounded-lg p-4">
-                    <div className="text-sm font-semibold text-gray-700 mb-4">Reference {i + 1}</div>
-
-                    <div className="space-y-4">
-                      <input
-                        type="text"
-                        placeholder="Full Name"
-                        value={ref.name}
-                        onChange={(e) => {
-                          const newRefs = [...references];
-                          newRefs[i].name = e.target.value;
-                          setReferences(newRefs);
-                        }}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm"
-                      />
-
-                      <input
-                        type="email"
-                        placeholder="Email"
-                        value={ref.email}
-                        onChange={(e) => {
-                          const newRefs = [...references];
-                          newRefs[i].email = e.target.value;
-                          setReferences(newRefs);
-                        }}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm"
-                      />
-
-                      <input
-                        type="tel"
-                        placeholder="Phone"
-                        value={ref.phone}
-                        onChange={(e) => {
-                          const newRefs = [...references];
-                          newRefs[i].phone = e.target.value;
-                          setReferences(newRefs);
-                        }}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm"
-                      />
-
-                      <select
-                        value={ref.relationship}
-                        onChange={(e) => {
-                          const newRefs = [...references];
-                          newRefs[i].relationship = e.target.value;
-                          setReferences(newRefs);
-                        }}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm"
-                      >
-                        <option value="previous_client">Previous Client</option>
-                        <option value="employer">Employer</option>
-                        <option value="colleague">Colleague</option>
-                        <option value="other">Other</option>
-                      </select>
-
-                      <textarea
-                        placeholder="Optional: How they can vouch for your work"
-                        value={ref.comment}
-                        onChange={(e) => {
-                          const newRefs = [...references];
-                          newRefs[i].comment = e.target.value;
-                          setReferences(newRefs);
-                        }}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm"
-                        rows={2}
-                      />
-                    </div>
+              <div className="pt-4 border-t border-gray-100 space-y-2">
+                {['$20/hr + $8/job gas fee', 'Weekly direct deposit', 'Jobs assigned around your schedule', 'Apollo Beach & Hillsborough County'].map(item => (
+                  <div key={item} className="flex items-center gap-2 text-sm text-gray-600">
+                    <span className="text-green-600 font-bold">✓</span> {item}
                   </div>
                 ))}
-              </div>
-
-              <div className="flex gap-4">
-                <button
-                  onClick={() => setStep('personal')}
-                  className="flex-1 bg-gray-200 text-gray-900 py-2 rounded-lg font-semibold hover:bg-gray-300"
-                >
-                  Back
-                </button>
-                <button
-                  onClick={() => setStep('availability')}
-                  className="flex-1 bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700"
-                >
-                  Continue
-                </button>
               </div>
             </div>
           )}
 
           {step === 'availability' && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-900">Weekly Availability</h2>
-              <p className="text-gray-600 text-sm">Set your available hours. Jobs will be auto-assigned based on this schedule.</p>
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Your Availability</h2>
+                <p className="text-sm text-gray-600 mt-1">Check the days you&apos;re available. We&apos;ll match jobs to your schedule.</p>
+              </div>
 
-              <div className="space-y-4">
-                {days.map((day, i) => (
-                  <div key={day} className="flex items-center gap-4">
-                    <div className="w-24 font-medium text-gray-700">{day}</div>
-                    <input
-                      type="time"
-                      value={availability[i + 1]?.start || '08:00'}
-                      onChange={(e) =>
-                        setAvailability({
-                          ...availability,
-                          [i + 1]: { ...availability[i + 1], start: e.target.value },
-                        })
-                      }
-                      className="px-3 py-2 border border-gray-300 rounded"
-                    />
-                    <span className="text-gray-500">to</span>
-                    <input
-                      type="time"
-                      value={availability[i + 1]?.end || '17:00'}
-                      onChange={(e) =>
-                        setAvailability({
-                          ...availability,
-                          [i + 1]: { ...availability[i + 1], end: e.target.value },
-                        })
-                      }
-                      className="px-3 py-2 border border-gray-300 rounded"
-                    />
+              <div className="space-y-3">
+                {days.map(({ key, label }) => (
+                  <div
+                    key={key}
+                    className={`flex items-center gap-4 p-3 rounded-lg border transition-colors ${
+                      availability[key].enabled ? 'border-green-200 bg-green-50' : 'border-gray-100 bg-gray-50'
+                    }`}
+                  >
+                    <label className="flex items-center gap-2 w-28 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={availability[key].enabled}
+                        onChange={(e) =>
+                          setAvailability({ ...availability, [key]: { ...availability[key], enabled: e.target.checked } })
+                        }
+                        className="w-4 h-4 accent-green-600"
+                      />
+                      <span className={`text-sm font-medium ${availability[key].enabled ? 'text-gray-900' : 'text-gray-400'}`}>{label}</span>
+                    </label>
+
+                    {availability[key].enabled && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <input
+                          type="time"
+                          value={availability[key].start}
+                          onChange={(e) => setAvailability({ ...availability, [key]: { ...availability[key], start: e.target.value } })}
+                          className="px-2 py-1 border border-gray-300 rounded text-sm"
+                        />
+                        <span className="text-gray-400">–</span>
+                        <input
+                          type="time"
+                          value={availability[key].end}
+                          onChange={(e) => setAvailability({ ...availability, [key]: { ...availability[key], end: e.target.value } })}
+                          className="px-2 py-1 border border-gray-300 rounded text-sm"
+                        />
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
 
-              <div className="flex gap-4">
+              {error && (
+                <p className="text-red-600 text-sm bg-red-50 px-4 py-2 rounded-lg">{error}</p>
+              )}
+
+              <div className="flex gap-3 pt-2">
                 <button
-                  onClick={() => setStep('references')}
-                  className="flex-1 bg-gray-200 text-gray-900 py-2 rounded-lg font-semibold hover:bg-gray-300"
+                  onClick={() => setStep('personal')}
+                  className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
                 >
                   Back
                 </button>
                 <button
-                  onClick={() => setStep('photos')}
-                  className="flex-1 bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700"
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Continue
-                </button>
-              </div>
-            </div>
-          )}
-
-          {step === 'photos' && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-900">Profile Photo</h2>
-              <p className="text-gray-600 text-sm">Upload a professional headshot. This helps clients trust you.</p>
-
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                <div className="text-gray-600">
-                  <div className="text-4xl mb-2">📸</div>
-                  <p>Click to upload or drag and drop</p>
-                </div>
-              </div>
-
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <p className="text-sm text-blue-900">✓ Background check pending (24-48 hours)</p>
-                <p className="text-sm text-blue-900">✓ Photo uploaded and verified</p>
-              </div>
-
-              <div className="flex gap-4">
-                <button
-                  onClick={() => setStep('availability')}
-                  className="flex-1 bg-gray-200 text-gray-900 py-2 rounded-lg font-semibold hover:bg-gray-300"
-                >
-                  Back
-                </button>
-                <button
-                  onClick={() => setStep('bank')}
-                  className="flex-1 bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700"
-                >
-                  Continue
-                </button>
-              </div>
-            </div>
-          )}
-
-          {step === 'bank' && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-900">Bank Account</h2>
-              <p className="text-gray-600 text-sm">We'll deposit your earnings every week. Used for 1099 tax forms.</p>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Bank Account (Last 4 digits)
-                </label>
-                <input
-                  type="text"
-                  placeholder="••••"
-                  maxLength={4}
-                  value={bankAccount}
-                  onChange={(e) => setBankAccount(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-
-              <div className="bg-green-50 p-4 rounded-lg">
-                <p className="text-sm text-green-900 font-semibold">✓ You're ready to go!</p>
-                <p className="text-sm text-green-900">Once approved, jobs will start coming in based on your availability.</p>
-              </div>
-
-              <div className="flex gap-4">
-                <button
-                  onClick={() => setStep('photos')}
-                  className="flex-1 bg-gray-200 text-gray-900 py-2 rounded-lg font-semibold hover:bg-gray-300"
-                >
-                  Back
-                </button>
-                <button className="flex-1 bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700">
-                  Complete Signup
+                  {submitting ? 'Submitting…' : 'Submit Application'}
                 </button>
               </div>
             </div>
