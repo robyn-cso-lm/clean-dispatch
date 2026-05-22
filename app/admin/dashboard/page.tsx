@@ -1,19 +1,106 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+
+type Cleaner = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  backgroundCheckStatus: string;
+  rating: number;
+  reviewCount: number;
+  totalHours: number;
+  createdAt: string;
+  _count: { jobs: number };
+  payouts: { amount: number; status: string }[];
+};
+
+type Job = {
+  id: string;
+  serviceType: string;
+  scheduledDate: string;
+  scheduledTime: string;
+  quoteAmount: number;
+  status: string;
+  client: { name: string; email: string };
+  assignment?: { cleaner: { name: string } } | null;
+};
+
+type Client = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  city: string;
+  createdAt: string;
+  _count: { jobs: number };
+};
+
+type Overview = {
+  totalCleaners: number;
+  pendingCleaners: number;
+  totalJobs: number;
+  recentJobs: Job[];
+  totalRevenue: number;
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    approved: 'bg-green-100 text-green-800',
+    pending: 'bg-yellow-100 text-yellow-800',
+    rejected: 'bg-red-100 text-red-800',
+    paid: 'bg-green-100 text-green-800',
+    assigned: 'bg-blue-100 text-blue-800',
+    accepted: 'bg-blue-100 text-blue-800',
+    completed: 'bg-gray-100 text-gray-800',
+    quoted: 'bg-gray-100 text-gray-600',
+    failed: 'bg-red-100 text-red-800',
+  };
+  return (
+    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${map[status] ?? 'bg-gray-100 text-gray-600'}`}>
+      {status}
+    </span>
+  );
+}
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'jobs' | 'cleaners' | 'clients'>('overview');
   const [signingOut, setSigningOut] = useState(false);
+  const [overview, setOverview] = useState<Overview | null>(null);
+  const [cleaners, setCleaners] = useState<Cleaner[] | null>(null);
+  const [jobs, setJobs] = useState<Job[] | null>(null);
+  const [clients, setClients] = useState<Client[] | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const stats = [
-    { label: 'Total Revenue', value: '$2,456.00', change: '+12%' },
-    { label: 'Active Cleaners', value: '24', change: '+3' },
-    { label: 'Jobs This Week', value: '47', change: '+18%' },
-    { label: 'Client Satisfaction', value: '4.8★', change: 'Excellent' },
-  ];
+  const fetchData = useCallback(async (type: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/admin/data?type=${type}`);
+      const data = await res.json();
+      if (type === 'overview') setOverview(data);
+      if (type === 'cleaners') setCleaners(data.cleaners);
+      if (type === 'jobs') setJobs(data.jobs);
+      if (type === 'clients') setClients(data.clients);
+    } catch (err) {
+      console.error('Failed to load data:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData('overview');
+  }, [fetchData]);
+
+  useEffect(() => {
+    if (activeTab === 'cleaners' && !cleaners) fetchData('cleaners');
+    if (activeTab === 'jobs' && !jobs) fetchData('jobs');
+    if (activeTab === 'clients' && !clients) fetchData('clients');
+  }, [activeTab, cleaners, jobs, clients, fetchData]);
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -21,8 +108,30 @@ export default function AdminDashboard() {
     router.push('/admin/login');
   }
 
+  async function approveCleaner(cleanerId: string) {
+    setApprovingId(cleanerId);
+    try {
+      const res = await fetch('/api/admin/cleaners/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cleanerId }),
+      });
+      if (res.ok) {
+        // Refresh cleaners list and overview
+        setCleaners(null);
+        setOverview(null);
+        await Promise.all([fetchData('cleaners'), fetchData('overview')]);
+      }
+    } finally {
+      setApprovingId(null);
+    }
+  }
+
+  const pendingCount = overview?.pendingCleaners ?? 0;
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Admin nav */}
       <div className="bg-white shadow-sm border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -48,11 +157,30 @@ export default function AdminDashboard() {
 
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {stats.map((stat) => (
-            <div key={stat.label} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          {[
+            {
+              label: 'Total Revenue',
+              value: overview ? `$${overview.totalRevenue.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—',
+            },
+            { label: 'Active Cleaners', value: overview?.totalCleaners ?? '—' },
+            { label: 'Total Jobs', value: overview?.totalJobs ?? '—' },
+            {
+              label: 'Pending Approvals',
+              value: overview?.pendingCleaners ?? '—',
+              alert: (overview?.pendingCleaners ?? 0) > 0,
+            },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className={`bg-white rounded-xl p-6 shadow-sm border ${stat.alert ? 'border-yellow-300' : 'border-gray-100'}`}
+            >
               <div className="text-gray-500 text-xs font-semibold uppercase tracking-wide">{stat.label}</div>
-              <div className="text-2xl font-bold text-gray-900 mt-2">{stat.value}</div>
-              <div className="text-xs text-green-600 mt-1 font-medium">{stat.change}</div>
+              <div className={`text-2xl font-bold mt-2 ${stat.alert ? 'text-yellow-600' : 'text-gray-900'}`}>
+                {String(stat.value)}
+              </div>
+              {stat.alert && (
+                <div className="text-xs text-yellow-600 mt-1 font-medium">Needs review</div>
+              )}
             </div>
           ))}
         </div>
@@ -63,156 +191,257 @@ export default function AdminDashboard() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 pb-3 pt-1 font-semibold capitalize text-sm transition-colors ${
+              className={`px-4 pb-3 pt-1 font-semibold capitalize text-sm transition-colors relative ${
                 activeTab === tab
                   ? 'border-b-2 border-green-600 text-green-600'
                   : 'text-gray-500 hover:text-gray-900'
               }`}
             >
               {tab}
+              {tab === 'cleaners' && pendingCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-yellow-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                  {pendingCount}
+                </span>
+              )}
             </button>
           ))}
         </div>
 
+        {/* Overview Tab */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
-            {/* Recent Jobs */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <h2 className="text-base font-semibold text-gray-900 mb-4">Recent Jobs</h2>
+              {loading || !overview ? (
+                <p className="text-sm text-gray-400">Loading...</p>
+              ) : overview.recentJobs.length === 0 ? (
+                <p className="text-sm text-gray-500">No jobs yet.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-100">
+                        <th className="text-left py-3 text-gray-500 font-medium">Client</th>
+                        <th className="text-left py-3 text-gray-500 font-medium">Cleaner</th>
+                        <th className="text-left py-3 text-gray-500 font-medium">Service</th>
+                        <th className="text-left py-3 text-gray-500 font-medium">Date</th>
+                        <th className="text-left py-3 text-gray-500 font-medium">Amount</th>
+                        <th className="text-left py-3 text-gray-500 font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {overview.recentJobs.map((job) => (
+                        <tr key={job.id} className="border-b border-gray-50">
+                          <td className="py-3 font-medium text-gray-900">{job.client.name}</td>
+                          <td className="py-3 text-gray-600">{job.assignment?.cleaner.name ?? '—'}</td>
+                          <td className="py-3 text-gray-600 capitalize">{job.serviceType}</td>
+                          <td className="py-3 text-gray-600">
+                            {new Date(job.scheduledDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </td>
+                          <td className="py-3 font-semibold text-green-600">${job.quoteAmount}</td>
+                          <td className="py-3"><StatusBadge status={job.status} /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {pendingCount > 0 && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
+                <div className="flex items-start gap-3">
+                  <span className="text-xl">⚠️</span>
+                  <div>
+                    <p className="font-semibold text-gray-900">
+                      {pendingCount} cleaner application{pendingCount > 1 ? 's' : ''} pending review
+                    </p>
+                    <p className="text-sm text-gray-600 mt-0.5">
+                      New applicants are waiting for background check approval before they can receive jobs.
+                    </p>
+                    <button
+                      onClick={() => setActiveTab('cleaners')}
+                      className="mt-3 text-sm font-semibold text-green-600 hover:text-green-700"
+                    >
+                      Review applications →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Jobs Tab */}
+        {activeTab === 'jobs' && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h2 className="text-base font-semibold text-gray-900 mb-6">All Jobs</h2>
+            {loading || !jobs ? (
+              <p className="text-sm text-gray-400">Loading...</p>
+            ) : jobs.length === 0 ? (
+              <p className="text-sm text-gray-500">No jobs yet.</p>
+            ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100">
                       <th className="text-left py-3 text-gray-500 font-medium">Client</th>
-                      <th className="text-left py-3 text-gray-500 font-medium">Cleaner</th>
+                      <th className="text-left py-3 text-gray-500 font-medium">Service</th>
                       <th className="text-left py-3 text-gray-500 font-medium">Date</th>
+                      <th className="text-left py-3 text-gray-500 font-medium">Time</th>
+                      <th className="text-left py-3 text-gray-500 font-medium">Cleaner</th>
                       <th className="text-left py-3 text-gray-500 font-medium">Amount</th>
                       <th className="text-left py-3 text-gray-500 font-medium">Status</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {[
-                      { client: 'Sarah Johnson', cleaner: 'Maria Garcia', date: '05/20', amount: '$78', status: 'Completed' },
-                      { client: 'Mike Davis', cleaner: 'James Wilson', date: '05/19', amount: '$58', status: 'Completed' },
-                      { client: 'Emma Wilson', cleaner: 'Maria Garcia', date: '05/18', amount: '$95', status: 'Completed' },
-                    ].map((job, i) => (
-                      <tr key={i} className="border-b border-gray-50">
-                        <td className="py-3 font-medium text-gray-900">{job.client}</td>
-                        <td className="py-3 text-gray-600">{job.cleaner}</td>
-                        <td className="py-3 text-gray-600">{job.date}</td>
-                        <td className="py-3 font-semibold text-green-600">{job.amount}</td>
-                        <td className="py-3">
-                          <span className="bg-green-100 text-green-800 px-2.5 py-1 rounded-full text-xs font-semibold">
-                            {job.status}
-                          </span>
+                    {jobs.map((job) => (
+                      <tr key={job.id} className="border-b border-gray-50">
+                        <td className="py-3 font-medium text-gray-900">{job.client.name}</td>
+                        <td className="py-3 text-gray-600 capitalize">{job.serviceType.replace('-', ' ')}</td>
+                        <td className="py-3 text-gray-600">
+                          {new Date(job.scheduledDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </td>
+                        <td className="py-3 text-gray-600">{job.scheduledTime}</td>
+                        <td className="py-3 text-gray-600">{job.assignment?.cleaner.name ?? <span className="text-yellow-600 font-medium">Unassigned</span>}</td>
+                        <td className="py-3 font-semibold text-gray-900">${job.quoteAmount}</td>
+                        <td className="py-3"><StatusBadge status={job.status} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Cleaners Tab */}
+        {activeTab === 'cleaners' && (
+          <div className="space-y-4">
+            {/* Pending applications */}
+            {cleaners && cleaners.filter(c => c.backgroundCheckStatus === 'pending').length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm border border-yellow-200 p-6">
+                <h2 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs font-bold">Pending</span>
+                  New Applications
+                </h2>
+                <div className="space-y-3">
+                  {cleaners.filter(c => c.backgroundCheckStatus === 'pending').map((cleaner) => (
+                    <div key={cleaner.id} className="flex items-center justify-between p-4 border border-yellow-100 bg-yellow-50 rounded-lg">
+                      <div>
+                        <p className="font-semibold text-gray-900">{cleaner.name}</p>
+                        <p className="text-sm text-gray-600">{cleaner.email} · {cleaner.phone}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          Applied {new Date(cleaner.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => approveCleaner(cleaner.id)}
+                        disabled={approvingId === cleaner.id}
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {approvingId === cleaner.id ? 'Approving…' : 'Approve ✓'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* All cleaners table */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <h2 className="text-base font-semibold text-gray-900 mb-6">All Cleaners</h2>
+              {loading || !cleaners ? (
+                <p className="text-sm text-gray-400">Loading...</p>
+              ) : cleaners.length === 0 ? (
+                <p className="text-sm text-gray-500">No cleaners yet. Share your recruitment links!</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-100">
+                        <th className="text-left py-3 text-gray-500 font-medium">Name</th>
+                        <th className="text-left py-3 text-gray-500 font-medium">Contact</th>
+                        <th className="text-left py-3 text-gray-500 font-medium">Status</th>
+                        <th className="text-left py-3 text-gray-500 font-medium">Jobs</th>
+                        <th className="text-left py-3 text-gray-500 font-medium">Rating</th>
+                        <th className="text-left py-3 text-gray-500 font-medium">Total Hrs</th>
+                        <th className="text-left py-3 text-gray-500 font-medium">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cleaners.map((cleaner) => (
+                        <tr key={cleaner.id} className="border-b border-gray-50">
+                          <td className="py-3 font-medium text-gray-900">{cleaner.name}</td>
+                          <td className="py-3 text-gray-500 text-xs">
+                            <div>{cleaner.email}</div>
+                            <div>{cleaner.phone}</div>
+                          </td>
+                          <td className="py-3"><StatusBadge status={cleaner.backgroundCheckStatus} /></td>
+                          <td className="py-3 text-gray-600">{cleaner._count.jobs}</td>
+                          <td className="py-3 text-gray-600">
+                            {cleaner.reviewCount > 0 ? `${cleaner.rating.toFixed(1)}★` : '—'}
+                          </td>
+                          <td className="py-3 text-gray-600">{cleaner.totalHours}h</td>
+                          <td className="py-3">
+                            {cleaner.backgroundCheckStatus === 'pending' && (
+                              <button
+                                onClick={() => approveCleaner(cleaner.id)}
+                                disabled={approvingId === cleaner.id}
+                                className="text-green-600 hover:text-green-700 font-semibold text-xs disabled:opacity-50"
+                              >
+                                {approvingId === cleaner.id ? 'Approving…' : 'Approve'}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Clients Tab */}
+        {activeTab === 'clients' && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h2 className="text-base font-semibold text-gray-900 mb-6">All Clients</h2>
+            {loading || !clients ? (
+              <p className="text-sm text-gray-400">Loading...</p>
+            ) : clients.length === 0 ? (
+              <p className="text-sm text-gray-500">No clients yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      <th className="text-left py-3 text-gray-500 font-medium">Name</th>
+                      <th className="text-left py-3 text-gray-500 font-medium">Email</th>
+                      <th className="text-left py-3 text-gray-500 font-medium">Phone</th>
+                      <th className="text-left py-3 text-gray-500 font-medium">City</th>
+                      <th className="text-left py-3 text-gray-500 font-medium">Jobs</th>
+                      <th className="text-left py-3 text-gray-500 font-medium">Since</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {clients.map((client) => (
+                      <tr key={client.id} className="border-b border-gray-50">
+                        <td className="py-3 font-medium text-gray-900">{client.name}</td>
+                        <td className="py-3 text-gray-600">{client.email}</td>
+                        <td className="py-3 text-gray-600">{client.phone}</td>
+                        <td className="py-3 text-gray-600">{client.city}</td>
+                        <td className="py-3 text-gray-600">{client._count.jobs}</td>
+                        <td className="py-3 text-gray-400 text-xs">
+                          {new Date(client.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h3 className="text-base font-semibold text-gray-900 mb-4">Top Cleaners</h3>
-                <div className="space-y-3">
-                  {['Maria Garcia (4.9★)', 'James Wilson (4.8★)', 'Sofia Martinez (4.7★)'].map((cleaner) => (
-                    <div key={cleaner} className="flex items-center justify-between text-sm">
-                      <span className="text-gray-700">{cleaner}</span>
-                      <span className="text-gray-500">15 jobs</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h3 className="text-base font-semibold text-gray-900 mb-4">Pending Approvals</h3>
-                <div className="space-y-3">
-                  <div className="p-3 border border-yellow-200 bg-yellow-50 rounded-lg">
-                    <p className="text-sm font-medium text-gray-900">2 New Cleaner Applications</p>
-                    <button className="text-green-600 hover:text-green-700 text-xs font-semibold mt-1">
-                      Review now →
-                    </button>
-                  </div>
-                  <div className="p-3 border border-gray-200 bg-gray-50 rounded-lg">
-                    <p className="text-sm font-medium text-gray-900">3 Background Checks Pending</p>
-                    <button className="text-green-600 hover:text-green-700 text-xs font-semibold mt-1">
-                      Check status →
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'jobs' && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-6">Job Management</h2>
-            <div className="flex gap-2">
-              {['All', 'Pending', 'In Progress', 'Completed'].map((filter, i) => (
-                <button
-                  key={filter}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                    i === 0
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {filter}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'cleaners' && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-6">Cleaner Management</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="text-left py-3 text-gray-500 font-medium">Name</th>
-                    <th className="text-left py-3 text-gray-500 font-medium">Status</th>
-                    <th className="text-left py-3 text-gray-500 font-medium">Jobs</th>
-                    <th className="text-left py-3 text-gray-500 font-medium">Rating</th>
-                    <th className="text-left py-3 text-gray-500 font-medium">Earnings</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    { name: 'Maria Garcia', status: 'Active', jobs: 24, rating: '4.9★', earnings: '$1,240' },
-                    { name: 'James Wilson', status: 'Active', jobs: 18, rating: '4.8★', earnings: '$890' },
-                    { name: 'Sofia Martinez', status: 'Pending', jobs: 0, rating: '—', earnings: '$0' },
-                  ].map((cleaner) => (
-                    <tr key={cleaner.name} className="border-b border-gray-50">
-                      <td className="py-3 font-medium text-gray-900">{cleaner.name}</td>
-                      <td className="py-3">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                          cleaner.status === 'Active'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {cleaner.status}
-                        </span>
-                      </td>
-                      <td className="py-3 text-gray-600">{cleaner.jobs}</td>
-                      <td className="py-3 text-gray-600">{cleaner.rating}</td>
-                      <td className="py-3 font-semibold text-gray-900">{cleaner.earnings}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'clients' && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-4">Client Management</h2>
-            <p className="text-gray-600 text-sm">View client accounts, bookings, and feedback.</p>
+            )}
           </div>
         )}
       </div>
