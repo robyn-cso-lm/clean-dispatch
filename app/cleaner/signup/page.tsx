@@ -111,7 +111,7 @@ export default function CleanerSignupPage() {
           {(['personal', 'availability'] as const).map((s, i) => (
             <div key={s} className="flex items-center gap-3">
               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-                step === s ? 'bg-green-600 text-white' : step === 'done' || (i === 0 && step === 'availability') ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'
+                step === s ? 'bg-green-600 text-white' : (i === 0 && step === 'availability') ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'
               }`}>
                 {i === 0 && step === 'availability' ? '✓' : i + 1}
               </div>
