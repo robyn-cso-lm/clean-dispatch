@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Welcome email to cleaner
     sendMail(
       email,
       'Welcome to CleanDispatch — Application Received',
@@ -39,6 +40,21 @@ export async function POST(request: NextRequest) {
       <p>Thanks for applying! Your application is under review.</p>
       <p>We'll be in touch within 24–48 hours once your background check is complete.</p>`
     ).catch(err => console.error('Welcome email failed:', err));
+
+    // Admin alert to Robyn
+    const adminEmail = process.env.ADMIN_EMAIL ?? process.env.MAIL_FROM;
+    if (adminEmail) {
+      sendMail(
+        adminEmail,
+        `New Cleaner Application — ${name}`,
+        `<h2>New cleaner application received</h2>
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Phone:</strong> ${phone}</p>
+        <p><strong>Status:</strong> Pending background check</p>
+        <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/dashboard">View in admin dashboard →</a></p>`
+      ).catch(err => console.error('Admin alert email failed:', err));
+    }
 
     return NextResponse.json(
       { success: true, cleanerId: cleaner.id, message: 'Signup successful. Background check in progress.' },

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { prisma } from '@/lib/prisma';
 import { notifyUser } from '@/lib/notifications';
+import { sendMail } from '@/lib/graphMail';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
@@ -41,13 +42,31 @@ export async function POST(request: NextRequest) {
       include: { client: true },
     });
 
-    // Notify client and trigger auto-assignment
+    // Notify client
     notifyUser(
       job.client.email,
       job.client.phone,
       'payment_received',
       { amount: job.quoteAmount, date: job.scheduledDate.toLocaleDateString() }
     ).catch(err => console.error('Payment confirmation notification failed:', err));
+
+    // Admin alert to Robyn
+    const adminEmail = process.env.ADMIN_EMAIL ?? process.env.MAIL_FROM;
+    if (adminEmail) {
+      sendMail(
+        adminEmail,
+        `New Booking Paid — ${job.client.name} ($${job.quoteAmount})`,
+        `<h2>New booking confirmed</h2>
+        <p><strong>Client:</strong> ${job.client.name}</p>
+        <p><strong>Email:</strong> ${job.client.email}</p>
+        <p><strong>Phone:</strong> ${job.client.phone}</p>
+        <p><strong>Service:</strong> ${job.serviceType}</p>
+        <p><strong>Date:</strong> ${job.scheduledDate.toLocaleDateString()} at ${job.scheduledTime}</p>
+        <p><strong>Address:</strong> ${job.client.address}</p>
+        <p><strong>Amount:</strong> $${job.quoteAmount}</p>
+        <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/dashboard">View in admin dashboard →</a></p>`
+      ).catch(err => console.error('Admin booking alert failed:', err));
+    }
 
     // Auto-assign a cleaner
     const dayOfWeek = job.scheduledDate.getDay();
