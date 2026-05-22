@@ -1,10 +1,10 @@
 async function getAccessToken(): Promise<string> {
-  const tenantId = process.env.AZURE_TENANT_ID;
-  const clientId = process.env.AZURE_CLIENT_ID;
-  const clientSecret = process.env.AZURE_CLIENT_SECRET;
+  const tenantId = process.env.GRAPH_TENANT_ID;
+  const clientId = process.env.GRAPH_CLIENT_ID;
+  const clientSecret = process.env.GRAPH_CLIENT_SECRET;
 
   if (!tenantId || !clientId || !clientSecret) {
-    throw new Error('Missing Azure credentials in environment variables.');
+    throw new Error('Missing Graph credentials (GRAPH_TENANT_ID, GRAPH_CLIENT_ID, GRAPH_CLIENT_SECRET).');
   }
 
   const res = await fetch(
