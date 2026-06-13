@@ -11,19 +11,27 @@ async function expectedToken(): Promise<string> {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const isApi = pathname.startsWith('/api/');
 
-  if (pathname === '/admin/login') {
+  // Public auth endpoints (page + API)
+  if (pathname === '/admin/login' || pathname === '/api/admin/login') {
     return NextResponse.next();
   }
 
+  // Unauthenticated: APIs get a 401, pages redirect to login.
+  const deny = () =>
+    isApi
+      ? NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      : NextResponse.redirect(new URL('/admin/login', request.url));
+
   const session = request.cookies.get('admin_session')?.value;
   if (!session) {
-    return NextResponse.redirect(new URL('/admin/login', request.url));
+    return deny();
   }
 
   const expected = await expectedToken();
   if (session !== expected) {
-    const res = NextResponse.redirect(new URL('/admin/login', request.url));
+    const res = deny();
     res.cookies.delete('admin_session');
     return res;
   }
@@ -32,5 +40,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: ['/admin/:path*', '/api/admin/:path*'],
 };
