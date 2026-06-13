@@ -130,7 +130,7 @@ model Job {
 
   addOns        JobAddOn[]
   assignment    JobAssignment?
-  payment       Payment?
+  payments      Payment[]
   review        Review?
   beforeAfterPhotos BeforeAfterPhoto[]
 }
@@ -180,12 +180,14 @@ model BeforeAfterPhoto {
 
 model Payment {
   id            String   @id @default(cuid())
-  jobId         String   @unique
+  jobId         String
   job           Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
   clientId      String
   client        Client   @relation(fields: [clientId], references: [id])
 
   amount        Float
+  // deposit | balance | additional
+  kind          String   @default("deposit")
   stripePaymentIntentId String @unique
   status        String   @default("pending")
 

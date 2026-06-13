@@ -31,6 +31,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true });
     }
 
+    if (type === 'balance') {
+      // Post-job balance settled (often already marked by the off-session
+      // charge; this confirms async/3DS completions). No re-assignment.
+      await prisma.payment
+        .update({ where: { stripePaymentIntentId: paymentIntent.id }, data: { status: 'succeeded' } })
+        .catch((err: unknown) => console.error('Balance payment update failed:', err));
+      console.log(`Balance payment succeeded for job ${jobId}`);
+      return NextResponse.json({ received: true });
+    }
+
     // Normal job payment
     await prisma.payment.update({
       where: { stripePaymentIntentId: paymentIntent.id },

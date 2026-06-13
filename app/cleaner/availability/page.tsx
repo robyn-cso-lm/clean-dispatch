@@ -127,7 +127,12 @@ function AvailabilityEditor() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-12">
-      <h1 className="text-3xl font-extrabold text-green-900 mb-1">Your CleanDispatch Profile ✨</h1>
+      <div className="flex items-center justify-between mb-1">
+        <h1 className="text-3xl font-extrabold text-green-900">Your CleanDispatch Profile ✨</h1>
+        <a href={`/cleaner/dashboard?token=${encodeURIComponent(token ?? '')}`} className="text-sm font-semibold text-green-700 hover:text-green-800 whitespace-nowrap">
+          My jobs →
+        </a>
+      </div>
       <p className="text-gray-600 mb-8">
         {name ? `Hi ${name.split(' ')[0]} — ` : ''}a few quick things so we can keep sending you jobs.
       </p>

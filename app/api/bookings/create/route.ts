@@ -111,6 +111,8 @@ export async function POST(request: NextRequest) {
       currency: 'usd',
       customer: stripeCustomerId,
       automatic_payment_methods: { enabled: true },
+      // Save the card so we can auto-charge the balance after the job.
+      setup_future_usage: 'off_session',
       metadata: { jobId: job.id, type: 'deposit' },
     });
 
@@ -119,6 +121,7 @@ export async function POST(request: NextRequest) {
         jobId: job.id,
         clientId: client.id,
         amount: depositAmount,
+        kind: 'deposit',
         stripePaymentIntentId: paymentIntent.id,
         status: 'pending',
       },

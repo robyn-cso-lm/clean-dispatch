@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { notifyUser } from '@/lib/notifications';
+import { chargeJobBalance } from '@/lib/billing';
 
 export async function POST(request: NextRequest) {
   try {
@@ -79,8 +80,19 @@ export async function POST(request: NextRequest) {
       data: { status: 'completed' },
     });
 
+    // Auto-charge the remaining balance to the card on file.
+    const balance = await chargeJobBalance(assignment.jobId);
+
     return NextResponse.json(
-      { success: true, onHold: false, message: 'Job completed. Payment released to cleaner.' },
+      {
+        success: true,
+        onHold: false,
+        balance,
+        message:
+          balance.status === 'charged'
+            ? `Job completed. Balance of $${balance.amount?.toFixed(2)} charged.`
+            : 'Job completed. Payment released to cleaner.',
+      },
       { status: 200 }
     );
   } catch (error) {
