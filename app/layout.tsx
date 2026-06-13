@@ -11,7 +11,7 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: "CleanDispatch — Professional Cleaning, Instantly Booked",
+  title: "Camica Clean Dispatch — Professional Cleaning, Instantly Booked",
   description:
     "Book a vetted professional cleaner in Tampa Bay in 2 minutes. Instant quote, transparent pricing, weekly payouts for cleaners.",
 };
@@ -53,7 +53,7 @@ export default function RootLayout({
                 />
                 <circle cx="14" cy="14" r="2.5" fill="#0e5552" />
               </svg>
-              <span className="text-white font-semibold">CleanDispatch</span>
+              <span className="text-white font-semibold">Camica Clean Dispatch</span>
               <span className="hidden sm:inline">· Tampa Bay Area, FL ☀️</span>
             </div>
             <nav className="flex gap-5">

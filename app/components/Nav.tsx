@@ -35,7 +35,7 @@ export default function Nav() {
               <circle cx="14" cy="14" r="2.5" fill="#ffffff" />
             </svg>
             <span className="text-xl font-bold text-gray-900 tracking-tight">
-              CleanDispatch
+              Camica Clean Dispatch
             </span>
           </Link>
 

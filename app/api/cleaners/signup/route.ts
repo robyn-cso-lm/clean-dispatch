@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
     // Welcome email to cleaner
     sendMail(
       email,
-      'Welcome to CleanDispatch — Application Received',
+      'Welcome to Camica Clean Dispatch — Application Received',
       `<h2>Hi ${name},</h2>
       <p>Thanks for applying! Your application is under review.</p>
       ${

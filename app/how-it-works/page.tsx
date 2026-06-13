@@ -8,7 +8,7 @@ export default function HowItWorks() {
       {/* Page header */}
       <div className="bg-white border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <h1 className="text-4xl font-bold text-gray-900">How CleanDispatch Works</h1>
+          <h1 className="text-4xl font-bold text-gray-900">How Camica Clean Dispatch Works</h1>
           <p className="text-xl text-gray-600 mt-2">
             The fastest way to book a professional cleaner in Tampa Bay
           </p>
@@ -162,7 +162,7 @@ export default function HowItWorks() {
 
         {/* Why Choose */}
         <div className="bg-green-50 rounded-xl p-12 mb-20">
-          <h3 className="text-2xl font-bold text-gray-900 mb-8">Why Cleaners Choose CleanDispatch</h3>
+          <h3 className="text-2xl font-bold text-gray-900 mb-8">Why Cleaners Choose Camica Clean Dispatch</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {[
               { title: 'No Admin Work', desc: 'We handle scheduling, payments, and customer communication.' },

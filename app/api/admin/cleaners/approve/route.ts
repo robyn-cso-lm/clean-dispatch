@@ -44,14 +44,14 @@ export async function POST(request: NextRequest) {
 
   sendMail(
     cleaner.email,
-    "You're Approved — Welcome to CleanDispatch!",
+    "You're Approved — Welcome to Camica Clean Dispatch!",
     `<h2>Great news, ${cleaner.name}!</h2>
-    <p>Your application has been approved and your CleanDispatch account is now active.</p>
+    <p>Your application has been approved and your Camica Clean Dispatch account is now active.</p>
     <p>You'll start receiving job assignments based on your availability. We'll text and email you when a new job is assigned to you.</p>
     <p><strong>Manage your weekly availability anytime:</strong><br>
     <a href="${accessUrl}">${accessUrl}</a></p>
     <p>Keep this link private — it's your personal access to your schedule.</p>
-    <p>— The CleanDispatch Team</p>`
+    <p>— The Camica Clean Dispatch Team</p>`
   ).catch((err) => console.error('Cleaner approval email failed:', err));
 
   return NextResponse.json({ success: true, cleaner: updated });

@@ -37,7 +37,7 @@ export default function AdminLoginPage() {
             <path d="M14 1L15.8 11.2L26 14L15.8 16.8L14 27L12.2 16.8L2 14L12.2 11.2Z" fill="#16A34A" />
             <circle cx="14" cy="14" r="2.5" fill="#15803D" />
           </svg>
-          <span className="font-bold text-gray-900">CleanDispatch</span>
+          <span className="font-bold text-gray-900">Camica Clean Dispatch</span>
         </div>
 
         <h1 className="text-2xl font-bold text-gray-900 mb-1">Admin</h1>

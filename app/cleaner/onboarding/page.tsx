@@ -7,7 +7,7 @@ export default function CleanerOnboarding() {
 
   const steps = [
     {
-      title: 'Welcome to CleanDispatch!',
+      title: 'Welcome to Camica Clean Dispatch!',
       description: 'You\'re approved and ready to earn. Here\'s how to succeed.',
       icon: '🎉',
       content: (
@@ -201,7 +201,7 @@ export default function CleanerOnboarding() {
           </div>
           <div className="border-t pt-4">
             <p className="text-sm text-gray-700 mb-3">Questions? Contact support:</p>
-            <p className="text-sm"><strong>Email:</strong> support@cleandispatch.com</p>
+            <p className="text-sm"><strong>Email:</strong> hello@camica.ca</p>
             <p className="text-sm"><strong>Phone:</strong> (813) 555-0123</p>
           </div>
         </div>

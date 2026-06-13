@@ -1,3 +1,22 @@
+import nodemailer, { type Transporter } from 'nodemailer';
+
+// SMTP transport (e.g. Gmail / Google Workspace). When SMTP_* are set we send
+// through it; otherwise we fall back to Microsoft Graph.
+let _smtp: Transporter | null = null;
+function smtpTransporter(): Transporter | null {
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) return null;
+  if (!_smtp) {
+    const port = parseInt(process.env.SMTP_PORT ?? '587', 10);
+    _smtp = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port,
+      secure: port === 465,
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    });
+  }
+  return _smtp;
+}
+
 export async function getAccessToken(): Promise<string> {
   const tenantId = process.env.GRAPH_TENANT_ID;
   const clientId = process.env.GRAPH_CLIENT_ID;
@@ -37,8 +56,16 @@ export async function sendMail(
   to: string,
   subject: string,
   htmlBody: string,
-  from = process.env.MAIL_FROM ?? 'noreply@cleandispatch.ca'
+  from = process.env.MAIL_FROM ?? 'hello@camica.ca'
 ): Promise<void> {
+  // Prefer SMTP (Google Workspace) when configured.
+  const smtp = smtpTransporter();
+  if (smtp) {
+    const name = process.env.MAIL_FROM_NAME ?? 'Camica Clean Dispatch';
+    await smtp.sendMail({ from: `"${name}" <${from}>`, to, subject, html: htmlBody });
+    return;
+  }
+
   const token = await getAccessToken();
 
   const res = await fetch(

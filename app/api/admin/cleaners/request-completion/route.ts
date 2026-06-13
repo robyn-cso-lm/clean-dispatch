@@ -76,10 +76,10 @@ export async function POST(request: NextRequest) {
     try {
       await sendMail(
         c.email,
-        'Action needed: finish your CleanDispatch profile ☀️',
+        'Action needed: finish your Camica Clean Dispatch profile ☀️',
         `<div style="font-family:Arial,sans-serif;color:#1f2a33;line-height:1.6">
           <h2 style="color:#0e5552">Hi ${c.name.split(' ')[0]},</h2>
-          <p>We're updating CleanDispatch and need a couple of quick things from you so we can keep sending you jobs:</p>
+          <p>We're updating Camica Clean Dispatch and need a couple of quick things from you so we can keep sending you jobs:</p>
           <ul>
             ${checkrLine}
             ${needsPhotos ? `<li><strong>Upload a few photos of your work</strong> (before/after shots are great). Our cleaners are the face of the company.</li>` : ''}
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
             </a>
           </p>
           <p style="font-size:13px;color:#6b7280">This link is personal to you — please don't share it. Questions? Just reply to this email.</p>
-          <p style="color:#0e5552;font-weight:bold">— The CleanDispatch Team</p>
+          <p style="color:#0e5552;font-weight:bold">— The Camica Clean Dispatch Team</p>
         </div>`
       );
       results.push({ name: c.name, email: c.email, emailSent: true, checkr });
