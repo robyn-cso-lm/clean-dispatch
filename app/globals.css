@@ -12,8 +12,99 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/*
+  Florida palette. The brand accent is an ocean turquoise — we remap the
+  built-in `green-*` scale to it so every existing `green-600`/`green-100`/etc.
+  utility across the app picks up the new color with no per-file churn.
+  Coral (flamingo/sunset) and sun (sunshine) are added for sparkle accents.
+*/
+@theme {
+  --color-green-50:  #ecfdfb;
+  --color-green-100: #cbf7f0;
+  --color-green-200: #9aece2;
+  --color-green-300: #5dddcf;
+  --color-green-400: #2cc8ba;
+  --color-green-500: #12b3a6;
+  --color-green-600: #0ba59f;
+  --color-green-700: #0a8780;
+  --color-green-800: #0c6b66;
+  --color-green-900: #0e5552;
+
+  --color-coral-50:  #fff2ef;
+  --color-coral-100: #ffe1d9;
+  --color-coral-200: #ffc4b5;
+  --color-coral-400: #ff8a73;
+  --color-coral-500: #ff6f57;
+  --color-coral-600: #f4543b;
+
+  --color-sun-100: #fff4d1;
+  --color-sun-300: #ffd76b;
+  --color-sun-400: #ffc83d;
+  --color-sun-500: #f7b500;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+}
+
+/* ── Sparkle ──────────────────────────────────────────────── */
+
+/* Twinkling ✨ accents */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.35; transform: scale(0.8) rotate(0deg); }
+  50%      { opacity: 1;    transform: scale(1.15) rotate(18deg); }
+}
+.sparkle {
+  display: inline-block;
+  animation: twinkle 2.4s ease-in-out infinite;
+}
+.sparkle-2 { animation-delay: 0.7s; }
+.sparkle-3 { animation-delay: 1.3s; }
+
+/* Shimmering gradient text — ocean → coral → sunshine sweeping across */
+@keyframes shimmerText {
+  to { background-position: 200% center; }
+}
+.shimmer-text {
+  background-image: linear-gradient(
+    90deg,
+    #0ba59f, #12b3a6, #ff6f57, #ffc83d, #12b3a6, #0ba59f
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmerText 5s linear infinite;
+}
+
+/* A light sweep across primary CTAs, like a clean surface catching the sun */
+.shine {
+  position: relative;
+  overflow: hidden;
+}
+.shine::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -80%;
+  width: 55%;
+  height: 100%;
+  background: linear-gradient(
+    120deg,
+    transparent,
+    rgba(255, 255, 255, 0.55),
+    transparent
+  );
+  transform: skewX(-20deg);
+  animation: shine 3.6s ease-in-out infinite;
+}
+@keyframes shine {
+  0%        { left: -80%; }
+  45%, 100% { left: 140%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sparkle, .shimmer-text, .shine::after { animation: none; }
 }

@@ -4,24 +4,37 @@ import Link from 'next/link';
 
 export default function Home() {
   return (
-    <div className="bg-gradient-to-b from-green-50 to-white">
+    <div className="relative overflow-hidden bg-gradient-to-b from-green-50 via-cyan-50 to-white">
+      {/* Sunny Florida glow */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 h-72 w-[42rem] rounded-full blur-3xl opacity-40"
+        style={{ background: 'radial-gradient(closest-side, #ffd76b, transparent)' }}
+      />
+
       {/* Hero */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+        <div className="inline-flex items-center gap-2 bg-white/70 backdrop-blur text-green-800 text-xs font-semibold uppercase tracking-widest px-4 py-1.5 rounded-full mb-6 border border-green-100">
+          <span className="sparkle">✨</span> Florida&apos;s sparkliest clean <span className="sparkle sparkle-2">✨</span>
+        </div>
         <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4 leading-tight">
-          Professional cleaning,{' '}
-          <span className="text-green-600">instantly booked</span>
+          We make your home{' '}
+          <span className="shimmer-text whitespace-nowrap">sparkle</span>
+          <span className="sparkle sparkle-3 text-3xl align-top">✨</span>
+          <br className="hidden sm:block" />
+          <span className="text-gray-900">instantly booked.</span>
         </h1>
         <p className="text-xl text-gray-600 mb-6 max-w-2xl mx-auto">
-          Get an instant quote, pick your time, and a vetted cleaner handles the rest.
-          No phone calls. No guessing. Just a clean home.
+          Get an instant quote, pick your time, and a vetted Tampa Bay cleaner handles the rest.
+          No phone calls. No guessing. Just a clean, sparkling home.
         </p>
-        <div className="inline-flex items-center gap-2 bg-green-100 text-green-800 text-sm font-semibold px-4 py-2 rounded-full mb-8">
-          <span>🏡</span> Now offering Airbnb &amp; short-term rental turnovers
+        <div className="inline-flex items-center gap-2 bg-coral-100 text-coral-600 text-sm font-semibold px-4 py-2 rounded-full mb-8">
+          <span>🏝️</span> Now offering Airbnb &amp; short-term rental turnovers
         </div>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link
             href="/client/quote"
-            className="inline-block bg-green-600 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-green-700 transition-colors"
+            className="shine inline-block bg-green-600 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-green-700 transition-colors shadow-lg shadow-green-600/20"
           >
             Get your free quote →
           </Link>
@@ -65,7 +78,7 @@ export default function Home() {
           </div>
 
           {/* Cleaners */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 border-l-4 border-l-gray-800">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 border-l-4 border-l-coral-500">
             <h2 className="text-2xl font-bold text-gray-900 mb-3">Become a Cleaner</h2>
             <p className="text-gray-600 mb-6">
               Sign up, get approved, and start accepting jobs. We handle scheduling and payments.

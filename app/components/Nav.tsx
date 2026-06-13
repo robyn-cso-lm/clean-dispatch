@@ -19,12 +19,20 @@ export default function Nav() {
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
               aria-hidden="true"
+              className="sparkle"
             >
+              <defs>
+                <linearGradient id="nav-sparkle" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#12b3a6" />
+                  <stop offset="0.6" stopColor="#0ba59f" />
+                  <stop offset="1" stopColor="#ffc83d" />
+                </linearGradient>
+              </defs>
               <path
                 d="M14 1L15.8 11.2L26 14L15.8 16.8L14 27L12.2 16.8L2 14L12.2 11.2Z"
-                fill="#16A34A"
+                fill="url(#nav-sparkle)"
               />
-              <circle cx="14" cy="14" r="2.5" fill="#15803D" />
+              <circle cx="14" cy="14" r="2.5" fill="#ffffff" />
             </svg>
             <span className="text-xl font-bold text-gray-900 tracking-tight">
               CleanDispatch

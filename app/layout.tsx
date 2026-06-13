@@ -44,14 +44,21 @@ export default function RootLayout({
                 xmlns="http://www.w3.org/2000/svg"
                 aria-hidden="true"
               >
+                <defs>
+                  <linearGradient id="footer-sparkle" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#2cc8ba" />
+                    <stop offset="0.6" stopColor="#0ba59f" />
+                    <stop offset="1" stopColor="#ffc83d" />
+                  </linearGradient>
+                </defs>
                 <path
                   d="M14 1L15.8 11.2L26 14L15.8 16.8L14 27L12.2 16.8L2 14L12.2 11.2Z"
-                  fill="#4ade80"
+                  fill="url(#footer-sparkle)"
                 />
-                <circle cx="14" cy="14" r="2.5" fill="#16A34A" />
+                <circle cx="14" cy="14" r="2.5" fill="#0e5552" />
               </svg>
               <span className="text-white font-semibold">CleanDispatch</span>
-              <span className="hidden sm:inline">· Tampa Bay Area, FL</span>
+              <span className="hidden sm:inline">· Tampa Bay Area, FL ☀️</span>
             </div>
             <nav className="flex gap-5">
               <Link href="/how-it-works" className="hover:text-white transition-colors">
