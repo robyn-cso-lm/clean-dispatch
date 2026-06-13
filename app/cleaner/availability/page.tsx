@@ -33,27 +33,53 @@ function AvailabilityEditor() {
   const [error, setError] = useState('');
   const [name, setName] = useState('');
   const [availability, setAvailability] = useState<Record<number, DayState>>(DEFAULT);
+  const [checkrStatus, setCheckrStatus] = useState('none');
+  const [photos, setPhotos] = useState<{ id: string; driveItemId: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [photoMsg, setPhotoMsg] = useState('');
 
   const load = useCallback(async () => {
     if (!token) { setError('This link is missing its access token.'); setLoading(false); return; }
     try {
       const res = await fetch(`/api/cleaners/availability?token=${encodeURIComponent(token)}`);
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? 'Could not load your schedule.'); return; }
+      if (!res.ok) { setError(data.error ?? 'Could not load your profile.'); return; }
       setName(data.name);
+      setCheckrStatus(data.checkrStatus ?? 'none');
+      setPhotos(data.photos ?? []);
       const next = { ...DEFAULT };
       for (const a of data.availability as { dayOfWeek: number; startTime: string; endTime: string; isAvailable: boolean }[]) {
         next[a.dayOfWeek] = { start: a.startTime, end: a.endTime, enabled: a.isAvailable };
       }
       setAvailability(next);
     } catch {
-      setError('Network error loading your schedule.');
+      setError('Network error loading your profile.');
     } finally {
       setLoading(false);
     }
   }, [token]);
 
   useEffect(() => { load(); }, [load]);
+
+  async function uploadPhotos(files: File[]) {
+    if (files.length === 0) return;
+    setUploading(true);
+    setPhotoMsg('');
+    try {
+      const fd = new FormData();
+      fd.append('token', token ?? '');
+      files.forEach((f) => fd.append('photos', f));
+      const res = await fetch('/api/cleaners/photos', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) { setPhotoMsg(data.error ?? 'Upload failed.'); return; }
+      setPhotoMsg(`Added ${data.uploaded} photo${data.uploaded === 1 ? '' : 's'} ✓`);
+      await load();
+    } catch {
+      setPhotoMsg('Network error uploading photos.');
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function save() {
     setSaving(true);
@@ -76,26 +102,77 @@ function AvailabilityEditor() {
   }
 
   if (loading) {
-    return <p className="text-sm text-gray-400 p-12 text-center">Loading your schedule…</p>;
+    return <p className="text-sm text-gray-400 p-12 text-center">Loading your profile…</p>;
   }
 
   if (error && !name) {
     return (
       <div className="max-w-md mx-auto mt-16 bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
-        <p className="text-gray-900 font-semibold mb-1">Can&apos;t open your schedule</p>
+        <p className="text-gray-900 font-semibold mb-1">Can&apos;t open your profile</p>
         <p className="text-sm text-gray-600">{error}</p>
       </div>
     );
   }
 
+  const checkrLabel: Record<string, { text: string; cls: string }> = {
+    clear: { text: 'Background check: passed ✓', cls: 'bg-green-50 border-green-200 text-green-800' },
+    consider: { text: 'Background check: under review', cls: 'bg-sun-100 border-sun-300 text-gray-800' },
+    invitation_sent: { text: 'Background check: check your email to complete it', cls: 'bg-sun-100 border-sun-300 text-gray-800' },
+    pending: { text: 'Background check: in progress', cls: 'bg-sun-100 border-sun-300 text-gray-800' },
+    none: { text: 'Background check: not started — we\'ll email you a link from our screening partner', cls: 'bg-gray-50 border-gray-200 text-gray-600' },
+    error: { text: 'Background check: not started yet', cls: 'bg-gray-50 border-gray-200 text-gray-600' },
+    suspended: { text: 'Background check: needs attention — please contact us', cls: 'bg-coral-100 border-coral-200 text-coral-600' },
+  };
+  const ck = checkrLabel[checkrStatus] ?? checkrLabel.none;
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-12">
-      <h1 className="text-3xl font-bold text-gray-900 mb-1">Your Availability</h1>
+      <h1 className="text-3xl font-extrabold text-green-900 mb-1">Your CleanDispatch Profile ✨</h1>
       <p className="text-gray-600 mb-8">
-        {name ? `Hi ${name.split(' ')[0]} — ` : ''}set the days and hours you can work. Jobs are only
-        offered to you within these windows.
+        {name ? `Hi ${name.split(' ')[0]} — ` : ''}a few quick things so we can keep sending you jobs.
       </p>
 
+      {/* Background check */}
+      <div className={`rounded-xl border p-4 mb-6 text-sm font-medium ${ck.cls}`}>{ck.text}</div>
+
+      {/* Work photos */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+        <h2 className="font-bold text-green-900 mb-1">Photos of your work</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Add a few photos of homes you&apos;ve cleaned (before/after shots are great). Our cleaners are the face of the company.
+        </p>
+
+        {photos.length > 0 && (
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-4">
+            {photos.map((p) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={p.id}
+                src={`/api/files/${p.driveItemId}`}
+                alt="Your work sample"
+                className="w-full h-20 object-cover rounded-lg border border-gray-200"
+              />
+            ))}
+          </div>
+        )}
+
+        <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-green-400 hover:bg-green-50 transition-colors">
+          <span className="text-sm font-medium text-gray-700">{uploading ? 'Uploading…' : 'Tap to add photos'}</span>
+          <span className="text-xs text-gray-400 mt-0.5">JPG or PNG</span>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            disabled={uploading}
+            className="hidden"
+            onChange={(e) => { uploadPhotos(Array.from(e.target.files ?? [])); e.target.value = ''; }}
+          />
+        </label>
+        {photoMsg && <p className="text-sm text-green-700 mt-3 font-medium">{photoMsg}</p>}
+      </div>
+
+      <h2 className="font-bold text-green-900 mb-2">Your weekly availability</h2>
+      <p className="text-sm text-gray-600 mb-3">Jobs are only offered to you within these windows.</p>
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-3">
         {DAYS.map(({ key, label }) => (
           <div

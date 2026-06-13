@@ -12,9 +12,11 @@ async function cleanerFromToken(token: string | null) {
       id: true,
       name: true,
       backgroundCheckStatus: true,
+      checkrStatus: true,
       availability: {
         select: { dayOfWeek: true, startTime: true, endTime: true, isAvailable: true },
       },
+      workPhotos: { select: { id: true, driveItemId: true } },
     },
   });
 }
@@ -28,6 +30,8 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     name: cleaner.name,
     status: cleaner.backgroundCheckStatus,
+    checkrStatus: cleaner.checkrStatus,
+    photos: cleaner.workPhotos,
     availability: cleaner.availability,
   });
 }

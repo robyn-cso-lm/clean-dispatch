@@ -75,6 +75,8 @@ export default function AdminDashboard() {
   const [jobs, setJobs] = useState<Job[] | null>(null);
   const [clients, setClients] = useState<Client[] | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [requestingId, setRequestingId] = useState<string | null>(null);
+  const [sendMsg, setSendMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -137,6 +139,36 @@ export default function AdminDashboard() {
       }
     } finally {
       setApprovingId(null);
+    }
+  }
+
+  async function requestCompletion(opts: { cleanerId?: string; all?: boolean }) {
+    setRequestingId(opts.all ? 'all' : opts.cleanerId ?? null);
+    setSendMsg('');
+    try {
+      const res = await fetch('/api/admin/cleaners/request-completion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(opts),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSendMsg(data.error ?? 'Failed to send.');
+        return;
+      }
+      const results = (data.results ?? []) as { emailSent: boolean }[];
+      const failed = results.filter((r) => !r.emailSent).length;
+      setSendMsg(
+        failed > 0
+          ? `Sent ${data.sent}/${data.total}. ${failed} failed — email may not be configured yet (set GRAPH_* in Railway).`
+          : `Onboarding email sent to ${data.sent} cleaner${data.sent === 1 ? '' : 's'} ✓`
+      );
+      setCleaners(null);
+      await fetchData('cleaners');
+    } catch {
+      setSendMsg('Network error sending emails.');
+    } finally {
+      setRequestingId(null);
     }
   }
 
@@ -411,7 +443,20 @@ export default function AdminDashboard() {
 
             {/* All cleaners table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h2 className="text-base font-semibold text-gray-900 mb-6">All Cleaners</h2>
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+                <h2 className="text-base font-semibold text-gray-900">All Cleaners</h2>
+                <button
+                  onClick={() => requestCompletion({ all: true })}
+                  disabled={requestingId === 'all'}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors disabled:opacity-50"
+                  title="Emails everyone still missing work photos or a background check"
+                >
+                  {requestingId === 'all' ? 'Sending…' : '✉️ Email cleaners to finish onboarding'}
+                </button>
+              </div>
+              {sendMsg && (
+                <p className="text-sm text-gray-700 bg-green-50 border border-green-100 rounded-lg px-4 py-2 mb-4">{sendMsg}</p>
+              )}
               {loading || !cleaners ? (
                 <p className="text-sm text-gray-400">Loading...</p>
               ) : cleaners.length === 0 ? (
@@ -445,15 +490,25 @@ export default function AdminDashboard() {
                           </td>
                           <td className="py-3 text-gray-600">{cleaner.totalHours}h</td>
                           <td className="py-3">
-                            {cleaner.backgroundCheckStatus === 'pending' && (
+                            <div className="flex items-center gap-3">
+                              {cleaner.backgroundCheckStatus === 'pending' && (
+                                <button
+                                  onClick={() => approveCleaner(cleaner.id)}
+                                  disabled={approvingId === cleaner.id}
+                                  className="text-green-600 hover:text-green-700 font-semibold text-xs disabled:opacity-50"
+                                >
+                                  {approvingId === cleaner.id ? 'Approving…' : 'Approve'}
+                                </button>
+                              )}
                               <button
-                                onClick={() => approveCleaner(cleaner.id)}
-                                disabled={approvingId === cleaner.id}
-                                className="text-green-600 hover:text-green-700 font-semibold text-xs disabled:opacity-50"
+                                onClick={() => requestCompletion({ cleanerId: cleaner.id })}
+                                disabled={requestingId === cleaner.id}
+                                className="text-gray-500 hover:text-gray-900 font-semibold text-xs disabled:opacity-50"
+                                title="Email this cleaner a link to finish onboarding"
                               >
-                                {approvingId === cleaner.id ? 'Approving…' : 'Approve'}
+                                {requestingId === cleaner.id ? 'Sending…' : '✉️ Email'}
                               </button>
-                            )}
+                            </div>
                           </td>
                         </tr>
                       ))}
