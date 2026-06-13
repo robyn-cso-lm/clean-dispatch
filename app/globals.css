@@ -2,14 +2,14 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #111827;
+  /* Soft deep ink — not a harsh pure black */
+  --foreground: #1f2a33;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-app-sans);
 }
 
 /*
@@ -41,12 +41,16 @@
   --color-sun-300: #ffd76b;
   --color-sun-400: #ffc83d;
   --color-sun-500: #f7b500;
+
+  /* Soften the darkest text/surfaces so nothing reads as harsh pure black */
+  --color-gray-900: #1f2a33;
+  --color-gray-800: #2c3a45;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  font-family: var(--font-app-sans), ui-rounded, system-ui, -apple-system, sans-serif;
 }
 
 /* ── Sparkle ──────────────────────────────────────────────── */

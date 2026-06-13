@@ -17,12 +17,12 @@ export default function Home() {
         <div className="inline-flex items-center gap-2 bg-white/70 backdrop-blur text-green-800 text-xs font-semibold uppercase tracking-widest px-4 py-1.5 rounded-full mb-6 border border-green-100">
           <span className="sparkle">✨</span> Florida&apos;s sparkliest clean <span className="sparkle sparkle-2">✨</span>
         </div>
-        <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4 leading-tight">
+        <h1 className="text-4xl sm:text-5xl font-extrabold text-green-900 mb-4 leading-tight">
           We make your home{' '}
           <span className="shimmer-text whitespace-nowrap">sparkle</span>
           <span className="sparkle sparkle-3 text-3xl align-top">✨</span>
           <br className="hidden sm:block" />
-          <span className="text-gray-900">instantly booked.</span>
+          <span className="text-green-800">instantly booked.</span>
         </h1>
         <p className="text-xl text-gray-600 mb-6 max-w-2xl mx-auto">
           Get an instant quote, pick your time, and a vetted Tampa Bay cleaner handles the rest.
