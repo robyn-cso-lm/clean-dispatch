@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 export default function CleanerSignupPage() {
-  const [step, setStep] = useState<'personal' | 'availability' | 'done'>('personal');
+  const [step, setStep] = useState<'personal' | 'availability' | 'photos' | 'done'>('personal');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -12,6 +12,8 @@ export default function CleanerSignupPage() {
     email: '',
     phone: '',
   });
+
+  const [photos, setPhotos] = useState<File[]>([]);
 
   const [availability, setAvailability] = useState<Record<number, { start: string; end: string; enabled: boolean }>>({
     1: { start: '08:00', end: '17:00', enabled: true },
@@ -43,6 +45,7 @@ export default function CleanerSignupPage() {
   async function handleSubmit() {
     const validationError = validate();
     if (validationError) { setError(validationError); return; }
+    if (photos.length === 0) { setError('Please add at least one photo of your past work.'); return; }
     setError('');
     setSubmitting(true);
 
@@ -53,16 +56,14 @@ export default function CleanerSignupPage() {
     );
 
     try {
-      const res = await fetch('/api/cleaners/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name.trim(),
-          email: formData.email.trim(),
-          phone: formData.phone.trim(),
-          availability: enabledDays,
-        }),
-      });
+      const fd = new FormData();
+      fd.append('name', formData.name.trim());
+      fd.append('email', formData.email.trim());
+      fd.append('phone', formData.phone.trim());
+      fd.append('availability', JSON.stringify(enabledDays));
+      photos.forEach((file) => fd.append('photos', file));
+
+      const res = await fetch('/api/cleaners/signup', { method: 'POST', body: fd });
 
       const data = await res.json();
 
@@ -107,21 +108,28 @@ export default function CleanerSignupPage() {
         <p className="text-gray-600 mb-8">Earn $20/hr + $8/job gas fee. Flexible hours. Weekly pay.</p>
 
         {/* Step progress */}
-        <div className="flex items-center gap-3 mb-8">
-          {(['personal', 'availability'] as const).map((s, i) => (
-            <div key={s} className="flex items-center gap-3">
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-                step === s ? 'bg-green-600 text-white' : (i === 0 && step === 'availability') ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'
-              }`}>
-                {i === 0 && step === 'availability' ? '✓' : i + 1}
-              </div>
-              <span className={`text-sm font-medium ${step === s ? 'text-gray-900' : 'text-gray-400'}`}>
-                {s === 'personal' ? 'Your Info' : 'Availability'}
-              </span>
-              {i < 1 && <div className={`w-8 h-0.5 ${step === 'availability' ? 'bg-green-400' : 'bg-gray-200'}`} />}
+        {(() => {
+          const stepOrder = ['personal', 'availability', 'photos'] as const;
+          const labels: Record<string, string> = { personal: 'Your Info', availability: 'Availability', photos: 'Work Photos' };
+          const currentIndex = stepOrder.indexOf(step as typeof stepOrder[number]);
+          return (
+            <div className="flex items-center gap-3 mb-8">
+              {stepOrder.map((s, i) => (
+                <div key={s} className="flex items-center gap-3">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                    step === s ? 'bg-green-600 text-white' : i < currentIndex ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'
+                  }`}>
+                    {i < currentIndex ? '✓' : i + 1}
+                  </div>
+                  <span className={`text-sm font-medium ${step === s ? 'text-gray-900' : 'text-gray-400'}`}>
+                    {labels[s]}
+                  </span>
+                  {i < stepOrder.length - 1 && <div className={`w-8 h-0.5 ${i < currentIndex ? 'bg-green-400' : 'bg-gray-200'}`} />}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          );
+        })()}
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
           {step === 'personal' && (
@@ -242,6 +250,79 @@ export default function CleanerSignupPage() {
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setStep('personal')}
+                  className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={() => { setError(''); setStep('photos'); }}
+                  className="flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                >
+                  Continue →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 'photos' && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Photos of Your Work</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Our cleaners are the face of the company. Upload a few photos of homes you&apos;ve cleaned
+                  (before/after shots are great). These are reviewed before your application is approved.
+                </p>
+              </div>
+
+              <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-green-400 hover:bg-green-50 transition-colors">
+                <svg className="w-8 h-8 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.9A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <span className="text-sm font-medium text-gray-700">Tap to add photos</span>
+                <span className="text-xs text-gray-400 mt-0.5">JPG or PNG</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files ?? []);
+                    setPhotos((prev) => [...prev, ...files]);
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+
+              {photos.length > 0 && (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                  {photos.map((file, idx) => (
+                    <div key={idx} className="relative group">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={URL.createObjectURL(file)}
+                        alt={`Work sample ${idx + 1}`}
+                        className="w-full h-20 object-cover rounded-lg border border-gray-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setPhotos((prev) => prev.filter((_, i) => i !== idx))}
+                        className="absolute -top-1.5 -right-1.5 bg-red-500 text-white w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center shadow"
+                        aria-label="Remove photo"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {error && (
+                <p className="text-red-600 text-sm bg-red-50 px-4 py-2 rounded-lg">{error}</p>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => { setError(''); setStep('availability'); }}
                   className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
                 >
                   Back

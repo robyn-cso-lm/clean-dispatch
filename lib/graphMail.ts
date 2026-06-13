@@ -1,4 +1,4 @@
-async function getAccessToken(): Promise<string> {
+export async function getAccessToken(): Promise<string> {
   const tenantId = process.env.GRAPH_TENANT_ID;
   const clientId = process.env.GRAPH_CLIENT_ID;
   const clientSecret = process.env.GRAPH_CLIENT_SECRET;

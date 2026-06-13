@@ -9,11 +9,13 @@ type Cleaner = {
   email: string;
   phone: string;
   backgroundCheckStatus: string;
+  checkrStatus: string;
   rating: number;
   reviewCount: number;
   totalHours: number;
   createdAt: string;
   _count: { jobs: number };
+  workPhotos: { id: string; driveItemId: string }[];
   payouts: { amount: number; status: string }[];
 };
 
@@ -108,23 +110,60 @@ export default function AdminDashboard() {
     router.push('/admin/login');
   }
 
-  async function approveCleaner(cleanerId: string) {
+  async function approveCleaner(cleanerId: string, force = false) {
     setApprovingId(cleanerId);
     try {
       const res = await fetch('/api/admin/cleaners/approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cleanerId }),
+        body: JSON.stringify({ cleanerId, force }),
       });
       if (res.ok) {
         // Refresh cleaners list and overview
         setCleaners(null);
         setOverview(null);
         await Promise.all([fetchData('cleaners'), fetchData('overview')]);
+        return;
+      }
+      const data = await res.json();
+      if (res.status === 422 && data.canForce) {
+        const ok = window.confirm(`${data.error}\n\nApprove anyway (override)?`);
+        if (ok) {
+          await approveCleaner(cleanerId, true);
+          return;
+        }
+      } else {
+        window.alert(data.error ?? 'Failed to approve.');
       }
     } finally {
       setApprovingId(null);
     }
+  }
+
+  function CheckBadge({ status }: { status: string }) {
+    const map: Record<string, string> = {
+      clear: 'bg-green-100 text-green-800',
+      consider: 'bg-orange-100 text-orange-800',
+      suspended: 'bg-red-100 text-red-800',
+      invitation_sent: 'bg-blue-100 text-blue-800',
+      pending: 'bg-yellow-100 text-yellow-800',
+      error: 'bg-red-100 text-red-800',
+      none: 'bg-gray-100 text-gray-500',
+    };
+    const label: Record<string, string> = {
+      clear: 'Check: clear',
+      consider: 'Check: consider',
+      suspended: 'Check: suspended',
+      invitation_sent: 'Check: invite sent',
+      pending: 'Check: pending',
+      error: 'Check: error',
+      none: 'Check: not started',
+    };
+    return (
+      <span className={`px-2 py-0.5 rounded text-xs font-semibold ${map[status] ?? map.none}`}>
+        {label[status] ?? `Check: ${status}`}
+      </span>
+    );
   }
 
   const pendingCount = overview?.pendingCleaners ?? 0;
@@ -327,21 +366,43 @@ export default function AdminDashboard() {
                 </h2>
                 <div className="space-y-3">
                   {cleaners.filter(c => c.backgroundCheckStatus === 'pending').map((cleaner) => (
-                    <div key={cleaner.id} className="flex items-center justify-between p-4 border border-yellow-100 bg-yellow-50 rounded-lg">
-                      <div>
-                        <p className="font-semibold text-gray-900">{cleaner.name}</p>
-                        <p className="text-sm text-gray-600">{cleaner.email} · {cleaner.phone}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          Applied {new Date(cleaner.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </p>
+                    <div key={cleaner.id} className="p-4 border border-yellow-100 bg-yellow-50 rounded-lg">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="font-semibold text-gray-900">{cleaner.name}</p>
+                          <p className="text-sm text-gray-600">{cleaner.email} · {cleaner.phone}</p>
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <CheckBadge status={cleaner.checkrStatus} />
+                            <span className={`text-xs font-medium ${cleaner.workPhotos.length > 0 ? 'text-gray-600' : 'text-red-600'}`}>
+                              {cleaner.workPhotos.length} work photo{cleaner.workPhotos.length === 1 ? '' : 's'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-400 mt-1">
+                            Applied {new Date(cleaner.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => approveCleaner(cleaner.id)}
+                          disabled={approvingId === cleaner.id}
+                          className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                        >
+                          {approvingId === cleaner.id ? 'Approving…' : 'Approve ✓'}
+                        </button>
                       </div>
-                      <button
-                        onClick={() => approveCleaner(cleaner.id)}
-                        disabled={approvingId === cleaner.id}
-                        className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {approvingId === cleaner.id ? 'Approving…' : 'Approve ✓'}
-                      </button>
+                      {cleaner.workPhotos.length > 0 && (
+                        <div className="flex gap-2 mt-3 flex-wrap">
+                          {cleaner.workPhotos.map((p) => (
+                            <a key={p.id} href={`/api/files/${p.driveItemId}`} target="_blank" rel="noreferrer">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={`/api/files/${p.driveItemId}`}
+                                alt="Work sample"
+                                className="w-20 h-20 object-cover rounded-lg border border-gray-200 hover:ring-2 hover:ring-green-500 transition"
+                              />
+                            </a>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

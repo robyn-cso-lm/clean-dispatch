@@ -51,6 +51,19 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, NEXT_PUBLIC_APP_URL
 
 ---
 
+## Added 2026-06-12 (onboarding + scheduling + booking)
+Branch `feature/onboarding-scheduling-booking`:
+- **Cleaner onboarding**: signup now collects work photos (stored in OneDrive via Graph, served at `/api/files/[id]`) and triggers a **Checkr** background check (`lib/checkr.ts`, webhook `/api/webhooks/checkr`). Admin approval is gated on photos + a `clear` check (override available). Admin review queue shows photos + check status.
+- **Self-service schedules**: cleaners edit weekly availability at `/cleaner/availability?token=<accessToken>` (link is in their approval email). API: `/api/cleaners/availability` GET/PUT.
+- **Availability-based booking**: client quote flow now shows only bookable start times (`/api/availability/slots`), collects contact + address, and takes a **50% deposit** via Stripe (`/api/bookings/create` + PaymentElement). Slot matching is buffer-aware (`lib/scheduling.ts`, default 60-min travel buffer) and shared with post-payment auto-assignment.
+
+**Before this works in prod:**
+1. Apply the migration: `prisma/migrations/20260612000000_onboarding_scheduling_booking` (run `npx prisma migrate deploy` against Neon/Railway, or apply the SQL manually — it's additive/safe).
+2. Set new env vars (see `env.example`): `GRAPH_*` (now lights up email + photo storage — needs `Files.ReadWrite.All`), `CHECKR_*`, `BOOKING_*`.
+3. Add the Checkr webhook URL (`/api/webhooks/checkr`) + `CHECKR_WEBHOOK_SECRET` in the Checkr dashboard.
+
+Note: `/cleaner/dashboard` is still mock (no cleaner login). Its "Edit availability" button is a placeholder — the real editor is the tokenized `/cleaner/availability` link.
+
 ## What's NOT done yet (next session priorities)
 
 ### 1. Branding (cosmetic — next session)

@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { prisma } from '@/lib/prisma';
 import { notifyUser } from '@/lib/notifications';
 import { sendMail } from '@/lib/graphMail';
+import { findAvailableCleanerId } from '@/lib/scheduling';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
@@ -68,35 +69,17 @@ export async function POST(request: NextRequest) {
       ).catch(err => console.error('Admin booking alert failed:', err));
     }
 
-    // Auto-assign a cleaner
-    const dayOfWeek = job.scheduledDate.getDay();
+    // Auto-assign a cleaner (buffer-aware, shared with the slot picker).
+    const cleanerId = await findAvailableCleanerId(
+      job.scheduledDate,
+      job.scheduledTime,
+      job.estimatedHours
+    );
 
-    const availableCleaner = await prisma.cleaner.findFirst({
-      where: {
-        backgroundCheckStatus: 'approved',
-        availability: {
-          some: {
-            dayOfWeek,
-            isAvailable: true,
-            startTime: { lte: job.scheduledTime },
-            endTime: { gte: job.scheduledTime },
-          },
-        },
-        jobs: {
-          none: {
-            job: {
-              scheduledDate: job.scheduledDate,
-              status: { in: ['assigned', 'accepted'] },
-            },
-          },
-        },
-      },
-      orderBy: { rating: 'desc' },
-    });
-
-    if (availableCleaner) {
+    if (cleanerId) {
+      const cleaner = await prisma.cleaner.findUnique({ where: { id: cleanerId } });
       const assignment = await prisma.jobAssignment.create({
-        data: { jobId, cleanerId: availableCleaner.id, status: 'pending' },
+        data: { jobId, cleanerId, status: 'pending' },
       });
 
       await prisma.job.update({
@@ -104,22 +87,24 @@ export async function POST(request: NextRequest) {
         data: { status: 'assigned' },
       });
 
-      notifyUser(
-        availableCleaner.email,
-        availableCleaner.phone,
-        'job_assigned',
-        {
-          serviceType: job.serviceType,
-          clientName: job.client.name,
-          address: job.client.address,
-          date: job.scheduledDate.toLocaleDateString(),
-          time: job.scheduledTime,
-          estimatedHours: job.estimatedHours,
-          total: job.quoteAmount,
-        }
-      ).catch(err => console.error('Cleaner assignment notification failed:', err));
+      if (cleaner) {
+        notifyUser(
+          cleaner.email,
+          cleaner.phone,
+          'job_assigned',
+          {
+            serviceType: job.serviceType,
+            clientName: job.client.name,
+            address: job.client.address,
+            date: job.scheduledDate.toLocaleDateString(),
+            time: job.scheduledTime,
+            estimatedHours: job.estimatedHours,
+            total: job.quoteAmount,
+          }
+        ).catch(err => console.error('Cleaner assignment notification failed:', err));
+      }
 
-      console.log(`Job ${jobId} auto-assigned to cleaner ${availableCleaner.id} (assignment ${assignment.id})`);
+      console.log(`Job ${jobId} auto-assigned to cleaner ${cleanerId} (assignment ${assignment.id})`);
     } else {
       console.log(`Job ${jobId} paid but no cleaner available — needs manual assignment`);
     }

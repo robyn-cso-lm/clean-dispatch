@@ -14,11 +14,13 @@ export async function GET(request: NextRequest) {
         email: true,
         phone: true,
         backgroundCheckStatus: true,
+        checkrStatus: true,
         rating: true,
         reviewCount: true,
         totalHours: true,
         createdAt: true,
         _count: { select: { jobs: true } },
+        workPhotos: { select: { id: true, driveItemId: true } },
         payouts: {
           select: { amount: true, status: true },
         },

@@ -39,12 +39,37 @@ model Cleaner {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  // Self-service access (no full auth yet): cleaners reach their own
+  // availability editor via an unguessable token link.
+  accessToken   String?  @unique @default(cuid())
+
+  // Checkr background-check tracking
+  checkrCandidateId String?
+  checkrReportId    String?
+  // none | invitation_sent | pending | clear | consider | suspended | error
+  checkrStatus      String  @default("none")
+
   availability  Availability[]
   jobs          JobAssignment[]
   beforeAfterPhotos BeforeAfterPhoto[]
+  workPhotos    CleanerWorkPhoto[]
   reviews       Review[]
   payouts       CleanerPayout[]
   references    CleanerReference[]
+}
+
+// Photos of past work a cleaner submits with their application.
+// Required (at least one) before an admin can approve them.
+model CleanerWorkPhoto {
+  id        String   @id @default(cuid())
+  cleanerId String
+  cleaner   Cleaner  @relation(fields: [cleanerId], references: [id], onDelete: Cascade)
+
+  // Microsoft Graph driveItem id; served via /api/files/[id]
+  driveItemId String
+  caption     String?
+
+  createdAt DateTime @default(now())
 }
 
 model Availability {
@@ -92,6 +117,8 @@ model Job {
 
   estimatedHours Float
   quoteAmount   Float
+  // Deposit taken at booking (balance billed on completion).
+  depositAmount Float?
 
   scheduledDate DateTime
   scheduledTime String

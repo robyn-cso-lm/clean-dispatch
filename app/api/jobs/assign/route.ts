@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { notifyUser } from '@/lib/notifications';
+import { findAvailableCleanerId } from '@/lib/scheduling';
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,41 +17,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    const dayOfWeek = job.scheduledDate.getDay();
+    const cleanerId = await findAvailableCleanerId(
+      job.scheduledDate,
+      job.scheduledTime,
+      job.estimatedHours
+    );
 
-    const availableCleaner = await prisma.cleaner.findFirst({
-      where: {
-        backgroundCheckStatus: 'approved',
-        availability: {
-          some: {
-            dayOfWeek,
-            isAvailable: true,
-            startTime: { lte: job.scheduledTime },
-            endTime: { gte: job.scheduledTime },
-          },
-        },
-        // Exclude cleaners already assigned on the same date
-        jobs: {
-          none: {
-            job: {
-              scheduledDate: job.scheduledDate,
-              status: { in: ['assigned', 'accepted'] },
-            },
-          },
-        },
-      },
-      orderBy: { rating: 'desc' },
-    });
-
-    if (!availableCleaner) {
+    if (!cleanerId) {
       return NextResponse.json(
         { error: 'No available cleaners for this slot. An admin will assign manually.', fallback: true },
         { status: 202 }
       );
     }
 
+    const cleaner = await prisma.cleaner.findUnique({ where: { id: cleanerId } });
+
     const assignment = await prisma.jobAssignment.create({
-      data: { jobId, cleanerId: availableCleaner.id, status: 'pending' },
+      data: { jobId, cleanerId, status: 'pending' },
     });
 
     await prisma.job.update({
@@ -58,23 +41,25 @@ export async function POST(request: NextRequest) {
       data: { status: 'assigned' },
     });
 
-    notifyUser(
-      availableCleaner.email,
-      availableCleaner.phone,
-      'job_assigned',
-      {
-        serviceType: job.serviceType,
-        clientName: job.client.name,
-        address: job.client.address,
-        date: job.scheduledDate.toLocaleDateString(),
-        time: job.scheduledTime,
-        estimatedHours: job.estimatedHours,
-        total: job.quoteAmount,
-      }
-    ).catch(err => console.error('Cleaner notification failed:', err));
+    if (cleaner) {
+      notifyUser(
+        cleaner.email,
+        cleaner.phone,
+        'job_assigned',
+        {
+          serviceType: job.serviceType,
+          clientName: job.client.name,
+          address: job.client.address,
+          date: job.scheduledDate.toLocaleDateString(),
+          time: job.scheduledTime,
+          estimatedHours: job.estimatedHours,
+          total: job.quoteAmount,
+        }
+      ).catch(err => console.error('Cleaner notification failed:', err));
+    }
 
     return NextResponse.json(
-      { success: true, assignmentId: assignment.id, cleanerId: availableCleaner.id, message: 'Job assigned to cleaner' },
+      { success: true, assignmentId: assignment.id, cleanerId, message: 'Job assigned to cleaner' },
       { status: 201 }
     );
   } catch (error) {
