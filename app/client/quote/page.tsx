@@ -76,6 +76,10 @@ export default function ClientQuotePage() {
     name: '', email: '', phone: '', address: '', city: '', zipCode: '',
   });
 
+  const [frequency, setFrequency] = useState<'one-time' | 'weekly' | 'biweekly' | 'monthly'>('one-time');
+  const [tipPreset, setTipPreset] = useState<'none' | '15' | '20' | 'custom'>('none');
+  const [customTip, setCustomTip] = useState('');
+
   const [clientSecret, setClientSecret] = useState('');
   const [depositAmount, setDepositAmount] = useState(0);
   const [booking, setBooking] = useState(false);
@@ -105,6 +109,12 @@ export default function ClientQuotePage() {
     bathrooms: formData.bathrooms,
     addOns: selectedAddOns,
   });
+
+  const tipAmount =
+    tipPreset === '15' ? Math.round(quote.totalQuote * 0.15 * 100) / 100
+    : tipPreset === '20' ? Math.round(quote.totalQuote * 0.2 * 100) / 100
+    : tipPreset === 'custom' ? Math.max(0, parseFloat(customTip) || 0)
+    : 0;
 
   const toggleAddOn = (id: string) => {
     setSelectedAddOns((prev) => (prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]));
@@ -148,6 +158,8 @@ export default function ClientQuotePage() {
           addOns: selectedAddOns,
           scheduledDate,
           scheduledTime,
+          frequency,
+          tipAmount,
         }),
       });
       const data = await res.json();
@@ -253,6 +265,33 @@ export default function ClientQuotePage() {
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" />
                     </div>
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">How often?</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {([
+                        { v: 'one-time', l: 'One-time' },
+                        { v: 'weekly', l: 'Weekly' },
+                        { v: 'biweekly', l: 'Every 2 wks' },
+                        { v: 'monthly', l: 'Monthly' },
+                      ] as const).map((o) => (
+                        <button
+                          key={o.v}
+                          onClick={() => setFrequency(o.v)}
+                          className={`py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                            frequency === o.v ? 'bg-green-600 text-white border-green-600' : 'border-gray-200 text-gray-700 hover:border-green-400'
+                          }`}
+                        >
+                          {o.l}
+                        </button>
+                      ))}
+                    </div>
+                    {frequency !== 'one-time' && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        We&apos;ll keep the same cleaner where possible and rebook automatically. Skip or cancel anytime.
+                      </p>
+                    )}
+                  </div>
+
                   <button onClick={() => setStep('addons')} className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors">
                     Continue →
                   </button>
@@ -351,6 +390,44 @@ export default function ClientQuotePage() {
                       onChange={(e) => setContact({ ...contact, zipCode: e.target.value })}
                       className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" />
                   </div>
+
+                  {/* Optional tip — 100% to the cleaner */}
+                  <div className="border-t border-gray-100 pt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Add a tip for your cleaner? <span className="text-gray-400 font-normal">(optional — 100% goes to them)</span>
+                    </label>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {([
+                        { v: 'none', l: 'No tip' },
+                        { v: '15', l: `15% ($${(quote.totalQuote * 0.15).toFixed(0)})` },
+                        { v: '20', l: `20% ($${(quote.totalQuote * 0.2).toFixed(0)})` },
+                        { v: 'custom', l: 'Custom' },
+                      ] as const).map((o) => (
+                        <button
+                          key={o.v}
+                          type="button"
+                          onClick={() => setTipPreset(o.v)}
+                          className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                            tipPreset === o.v ? 'bg-coral-500 text-white border-coral-500' : 'border-gray-200 text-gray-700 hover:border-coral-400'
+                          }`}
+                        >
+                          {o.l}
+                        </button>
+                      ))}
+                    </div>
+                    {tipPreset === 'custom' && (
+                      <div className="mt-2 relative w-32">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                        <input
+                          type="number" min="0" step="1" placeholder="0"
+                          value={customTip}
+                          onChange={(e) => setCustomTip(e.target.value)}
+                          className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-coral-400 focus:border-transparent"
+                        />
+                      </div>
+                    )}
+                  </div>
+
                   {error && <p className="text-red-600 text-sm bg-red-50 px-4 py-2 rounded-lg">{error}</p>}
                   <div className="flex gap-4">
                     <button onClick={() => setStep('schedule')} className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors">Back</button>
@@ -420,20 +497,37 @@ export default function ClientQuotePage() {
                 })}
               </div>
             )}
-            <div className="space-y-1 pt-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Total</span>
-                <span className="font-semibold text-gray-900">${quote.totalQuote}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Due now (50% deposit)</span>
-                <span className="font-bold text-green-600">${(step === 'payment' ? depositAmount : depositPreview).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>Balance after clean</span>
-                <span>${(quote.totalQuote - (step === 'payment' ? depositAmount : depositPreview)).toFixed(2)}</span>
-              </div>
-            </div>
+            {(() => {
+              const dep = step === 'payment' ? depositAmount : depositPreview;
+              const freqLabel: Record<string, string> = { weekly: 'Weekly', biweekly: 'Every 2 weeks', monthly: 'Monthly' };
+              return (
+                <div className="space-y-1 pt-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Total{frequency !== 'one-time' ? ' / visit' : ''}</span>
+                    <span className="font-semibold text-gray-900">${quote.totalQuote}</span>
+                  </div>
+                  {tipAmount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Tip (to cleaner)</span>
+                      <span className="font-medium text-coral-600">+${tipAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Due now (deposit{tipAmount > 0 ? ' + tip' : ''})</span>
+                    <span className="font-bold text-green-600">${(dep + tipAmount).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>Balance after clean</span>
+                    <span>${(quote.totalQuote - dep).toFixed(2)}</span>
+                  </div>
+                  {frequency !== 'one-time' && (
+                    <div className="mt-2 text-xs text-green-700 bg-green-50 rounded-lg px-3 py-2 font-medium">
+                      🔁 {freqLabel[frequency]} plan — rebooks automatically, cancel anytime.
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>

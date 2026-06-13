@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { prisma } from '@/lib/prisma';
 import { calculateQuote, type QuoteRequest } from '@/lib/quoteCalculator';
 import { getAvailableSlots } from '@/lib/scheduling';
+import { nextDateFor } from '@/lib/recurring';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
 
@@ -22,7 +23,12 @@ export async function POST(request: NextRequest) {
       scheduledDate,
       scheduledTime,
       specialRequests,
+      frequency = 'one-time', // one-time | weekly | biweekly | monthly
+      tipAmount = 0,
     } = body;
+
+    const tip = Math.max(0, Math.round((Number(tipAmount) || 0) * 100) / 100);
+    const isRecurring = ['weekly', 'biweekly', 'monthly'].includes(frequency);
 
     if (!contact?.name || !contact?.email || !contact?.phone || !contact?.address) {
       return NextResponse.json({ error: 'Name, email, phone and address are required.' }, { status: 400 });
@@ -73,9 +79,32 @@ export async function POST(request: NextRequest) {
     const depositPercent = parseFloat(process.env.BOOKING_DEPOSIT_PERCENT ?? '50');
     const depositAmount = Math.round(quote.totalQuote * (depositPercent / 100) * 100) / 100;
 
+    // Create the recurring plan first (if chosen) so the first visit links to it.
+    let planId: string | undefined;
+    if (isRecurring) {
+      const plan = await prisma.recurringPlan.create({
+        data: {
+          clientId: client.id,
+          serviceType,
+          squareFeet: parseInt(squareFeet, 10),
+          bedrooms: parseInt(bedrooms, 10),
+          bathrooms: parseInt(bathrooms, 10),
+          addOns: addOns?.length ? addOns.join(',') : null,
+          specialRequests: specialRequests || null,
+          frequency,
+          scheduledTime,
+          tipAmount: tip,
+          // First visit is `scheduledDate`; the plan tracks the NEXT one.
+          nextDate: nextDateFor(new Date(scheduledDate), frequency),
+        },
+      });
+      planId = plan.id;
+    }
+
     const job = await prisma.job.create({
       data: {
         clientId: client.id,
+        planId,
         serviceType,
         squareFeet: parseInt(squareFeet, 10),
         bedrooms: parseInt(bedrooms, 10),
@@ -87,6 +116,7 @@ export async function POST(request: NextRequest) {
         estimatedHours: quote.hoursEstimate,
         quoteAmount: quote.totalQuote,
         depositAmount,
+        tipAmount: tip,
         scheduledDate: new Date(scheduledDate),
         scheduledTime,
         status: 'quoted',
@@ -106,12 +136,14 @@ export async function POST(request: NextRequest) {
       await prisma.client.update({ where: { id: client.id }, data: { stripeCustomerId } });
     }
 
+    // Charge the deposit now, plus any tip (100% of which goes to the cleaner).
+    const dueNow = Math.round((depositAmount + tip) * 100) / 100;
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(depositAmount * 100),
+      amount: Math.round(dueNow * 100),
       currency: 'usd',
       customer: stripeCustomerId,
       automatic_payment_methods: { enabled: true },
-      // Save the card so we can auto-charge the balance after the job.
+      // Save the card so we can auto-charge the balance + future visits.
       setup_future_usage: 'off_session',
       metadata: { jobId: job.id, type: 'deposit' },
     });
@@ -120,7 +152,7 @@ export async function POST(request: NextRequest) {
       data: {
         jobId: job.id,
         clientId: client.id,
-        amount: depositAmount,
+        amount: depositAmount, // deposit portion only; tip tracked on the job
         kind: 'deposit',
         stripePaymentIntentId: paymentIntent.id,
         status: 'pending',
@@ -132,6 +164,9 @@ export async function POST(request: NextRequest) {
         jobId: job.id,
         clientSecret: paymentIntent.client_secret,
         depositAmount,
+        tipAmount: tip,
+        dueNow,
+        recurring: isRecurring ? frequency : null,
         totalQuote: quote.totalQuote,
         balanceDue: Math.round((quote.totalQuote - depositAmount) * 100) / 100,
       },

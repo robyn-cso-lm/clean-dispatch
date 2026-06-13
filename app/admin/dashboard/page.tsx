@@ -40,6 +40,18 @@ type Client = {
   _count: { jobs: number };
 };
 
+type Plan = {
+  id: string;
+  serviceType: string;
+  frequency: string;
+  status: string;
+  nextDate: string;
+  tipAmount: number;
+  client: { name: string; email: string };
+  preferredCleaner: { name: string } | null;
+  _count: { jobs: number };
+};
+
 type Overview = {
   totalCleaners: number;
   pendingCleaners: number;
@@ -68,12 +80,14 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'jobs' | 'cleaners' | 'clients'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'jobs' | 'cleaners' | 'clients' | 'recurring'>('overview');
   const [signingOut, setSigningOut] = useState(false);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [cleaners, setCleaners] = useState<Cleaner[] | null>(null);
   const [jobs, setJobs] = useState<Job[] | null>(null);
   const [clients, setClients] = useState<Client[] | null>(null);
+  const [plans, setPlans] = useState<Plan[] | null>(null);
+  const [planBusy, setPlanBusy] = useState<string | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [requestingId, setRequestingId] = useState<string | null>(null);
   const [sendMsg, setSendMsg] = useState('');
@@ -89,6 +103,7 @@ export default function AdminDashboard() {
       if (type === 'cleaners') setCleaners(data.cleaners);
       if (type === 'jobs') setJobs(data.jobs);
       if (type === 'clients') setClients(data.clients);
+      if (type === 'recurring') setPlans(data.plans);
     } catch (err) {
       console.error('Failed to load data:', err);
     } finally {
@@ -104,7 +119,25 @@ export default function AdminDashboard() {
     if (activeTab === 'cleaners' && !cleaners) fetchData('cleaners');
     if (activeTab === 'jobs' && !jobs) fetchData('jobs');
     if (activeTab === 'clients' && !clients) fetchData('clients');
-  }, [activeTab, cleaners, jobs, clients, fetchData]);
+    if (activeTab === 'recurring' && !plans) fetchData('recurring');
+  }, [activeTab, cleaners, jobs, clients, plans, fetchData]);
+
+  async function updatePlan(planId: string, action: 'pause' | 'resume' | 'cancel') {
+    setPlanBusy(planId);
+    try {
+      const res = await fetch('/api/admin/recurring', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId, action }),
+      });
+      if (res.ok) {
+        setPlans(null);
+        await fetchData('recurring');
+      }
+    } finally {
+      setPlanBusy(null);
+    }
+  }
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -258,7 +291,7 @@ export default function AdminDashboard() {
 
         {/* Tabs */}
         <div className="flex gap-1 border-b border-gray-200 mb-8">
-          {(['overview', 'jobs', 'cleaners', 'clients'] as const).map((tab) => (
+          {(['overview', 'jobs', 'cleaners', 'clients', 'recurring'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -551,6 +584,60 @@ export default function AdminDashboard() {
                         <td className="py-3 text-gray-600">{client._count.jobs}</td>
                         <td className="py-3 text-gray-400 text-xs">
                           {new Date(client.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Recurring Tab */}
+        {activeTab === 'recurring' && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h2 className="text-base font-semibold text-gray-900 mb-6">Recurring Plans</h2>
+            {loading || !plans ? (
+              <p className="text-sm text-gray-400">Loading...</p>
+            ) : plans.length === 0 ? (
+              <p className="text-sm text-gray-500">No recurring plans yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      <th className="text-left py-3 text-gray-500 font-medium">Client</th>
+                      <th className="text-left py-3 text-gray-500 font-medium">Service</th>
+                      <th className="text-left py-3 text-gray-500 font-medium">Frequency</th>
+                      <th className="text-left py-3 text-gray-500 font-medium">Next visit</th>
+                      <th className="text-left py-3 text-gray-500 font-medium">Visits</th>
+                      <th className="text-left py-3 text-gray-500 font-medium">Status</th>
+                      <th className="text-left py-3 text-gray-500 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {plans.map((p) => (
+                      <tr key={p.id} className="border-b border-gray-50">
+                        <td className="py-3 font-medium text-gray-900">{p.client.name}</td>
+                        <td className="py-3 text-gray-600 capitalize">{p.serviceType.replace('-', ' ')}</td>
+                        <td className="py-3 text-gray-600 capitalize">{p.frequency}</td>
+                        <td className="py-3 text-gray-600">
+                          {new Date(p.nextDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </td>
+                        <td className="py-3 text-gray-600">{p._count.jobs}</td>
+                        <td className="py-3"><StatusBadge status={p.status} /></td>
+                        <td className="py-3">
+                          {p.status !== 'cancelled' && (
+                            <div className="flex items-center gap-3 text-xs font-semibold">
+                              {p.status === 'active' ? (
+                                <button onClick={() => updatePlan(p.id, 'pause')} disabled={planBusy === p.id} className="text-gray-500 hover:text-gray-900 disabled:opacity-50">Pause</button>
+                              ) : (
+                                <button onClick={() => updatePlan(p.id, 'resume')} disabled={planBusy === p.id} className="text-green-600 hover:text-green-700 disabled:opacity-50">Resume</button>
+                              )}
+                              <button onClick={() => { if (window.confirm('Cancel this recurring plan?')) updatePlan(p.id, 'cancel'); }} disabled={planBusy === p.id} className="text-coral-600 hover:text-coral-700 disabled:opacity-50">Cancel</button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))}

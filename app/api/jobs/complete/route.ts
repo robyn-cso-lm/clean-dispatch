@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { notifyUser } from '@/lib/notifications';
 import { chargeJobBalance } from '@/lib/billing';
+import { generateNextVisit } from '@/lib/recurring';
 
 export async function POST(request: NextRequest) {
   try {
@@ -82,6 +83,11 @@ export async function POST(request: NextRequest) {
 
     // Auto-charge the remaining balance to the card on file.
     const balance = await chargeJobBalance(assignment.jobId);
+
+    // If this job is part of a recurring plan, schedule the next visit.
+    if (assignment.job.planId) {
+      generateNextVisit(assignment.job.planId).catch((e) => console.error('Next visit generation failed:', e));
+    }
 
     return NextResponse.json(
       {

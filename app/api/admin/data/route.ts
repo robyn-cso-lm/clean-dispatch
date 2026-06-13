@@ -43,6 +43,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ jobs });
   }
 
+  if (type === 'recurring') {
+    const plans = await prisma.recurringPlan.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        client: { select: { name: true, email: true } },
+        preferredCleaner: { select: { name: true } },
+        _count: { select: { jobs: true } },
+      },
+    });
+    return NextResponse.json({ plans });
+  }
+
   if (type === 'clients') {
     const clients = await prisma.client.findMany({
       orderBy: { createdAt: 'desc' },

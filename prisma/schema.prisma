@@ -16,11 +16,14 @@ model Client {
   county        String
   zipCode       String
   stripeCustomerId String?
+  // Saved card (set after the first deposit) for off-session balance + recurring charges
+  stripePaymentMethodId String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   jobs          Job[]
   payments      Payment[]
+  recurringPlans RecurringPlan[]
 }
 
 model Cleaner {
@@ -56,6 +59,7 @@ model Cleaner {
   reviews       Review[]
   payouts       CleanerPayout[]
   references    CleanerReference[]
+  recurringPlans RecurringPlan[]
 }
 
 // Photos of past work a cleaner submits with their application.
@@ -119,11 +123,17 @@ model Job {
   quoteAmount   Float
   // Deposit taken at booking (balance billed on completion).
   depositAmount Float?
+  // Optional tip — 100% goes to the cleaner.
+  tipAmount     Float    @default(0)
 
   scheduledDate DateTime
   scheduledTime String
 
   status        String   @default("quoted")
+
+  // Set when this job belongs to a recurring plan.
+  planId        String?
+  plan          RecurringPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -133,6 +143,36 @@ model Job {
   payments      Payment[]
   review        Review?
   beforeAfterPhotos BeforeAfterPhoto[]
+}
+
+// A repeating cleaning plan (weekly/biweekly/monthly). Each visit is billed
+// per-visit (deposit + balance), reusing the one-off flow.
+model RecurringPlan {
+  id            String   @id @default(cuid())
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  serviceType   String
+  squareFeet    Int
+  bedrooms      Int
+  bathrooms     Int
+  addOns        String?  // comma-separated add-on ids
+  specialRequests String?
+
+  frequency     String   // weekly | biweekly | monthly
+  scheduledTime String
+  tipAmount     Float    @default(0)
+
+  preferredCleanerId String?
+  preferredCleaner   Cleaner? @relation(fields: [preferredCleanerId], references: [id], onDelete: SetNull)
+
+  status        String   @default("active") // active | paused | cancelled
+  nextDate      DateTime
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  jobs          Job[]
 }
 
 model JobAddOn {

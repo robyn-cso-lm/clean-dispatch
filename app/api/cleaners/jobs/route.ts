@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { notifyUser } from '@/lib/notifications';
 import { chargeJobBalance } from '@/lib/billing';
+import { generateNextVisit } from '@/lib/recurring';
 
 // Token-gated job board for a cleaner: list their assignments and act on them
 // (accept / decline / mark complete). The token is their personal accessToken.
@@ -135,6 +136,9 @@ export async function POST(request: NextRequest) {
     await prisma.jobAssignment.update({ where: { id: assignmentId }, data: { actualHours: hours, status: 'completed' } });
     await prisma.job.update({ where: { id: assignment.jobId }, data: { status: 'completed' } });
     const balance = await chargeJobBalance(assignment.jobId);
+    if (assignment.job.planId) {
+      generateNextVisit(assignment.job.planId).catch((e) => console.error('Next visit generation failed:', e));
+    }
     return NextResponse.json({ success: true, onHold: false, balance });
   }
 

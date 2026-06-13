@@ -53,6 +53,16 @@ export async function POST(request: NextRequest) {
       include: { client: true },
     });
 
+    // Save the card for off-session balance + recurring charges.
+    if (paymentIntent.payment_method) {
+      await prisma.client
+        .update({
+          where: { id: job.clientId },
+          data: { stripePaymentMethodId: paymentIntent.payment_method as string },
+        })
+        .catch((err: unknown) => console.error('Saving payment method failed:', err));
+    }
+
     // Notify client
     notifyUser(
       job.client.email,
