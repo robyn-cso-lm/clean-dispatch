@@ -16,6 +16,7 @@ type Cleaner = {
   createdAt: string;
   _count: { jobs: number };
   workPhotos: { id: string; driveItemId: string }[];
+  availability: { dayOfWeek: number; startTime: string; endTime: string; isAvailable: boolean }[];
   payouts: { amount: number; status: string }[];
 };
 
@@ -76,6 +77,33 @@ function StatusBadge({ status }: { status: string }) {
     <span className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${map[status] ?? 'bg-gray-100 text-gray-600'}`}>
       {status}
     </span>
+  );
+}
+
+function AvailStrip({ availability }: { availability: Cleaner['availability'] }) {
+  const days = [
+    { k: 1, l: 'M' }, { k: 2, l: 'T' }, { k: 3, l: 'W' }, { k: 4, l: 'T' },
+    { k: 5, l: 'F' }, { k: 6, l: 'S' }, { k: 0, l: 'S' },
+  ];
+  const byDay = new Map(availability.filter((a) => a.isAvailable).map((a) => [a.dayOfWeek, a]));
+  if (byDay.size === 0) return <span className="text-xs text-gray-400">None set</span>;
+  return (
+    <div className="flex gap-1">
+      {days.map((d) => {
+        const a = byDay.get(d.k);
+        return (
+          <span
+            key={d.k}
+            title={a ? `${a.startTime}–${a.endTime}` : 'Unavailable'}
+            className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold ${
+              a ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-300'
+            }`}
+          >
+            {d.l}
+          </span>
+        );
+      })}
+    </div>
   );
 }
 
@@ -442,6 +470,10 @@ export default function AdminDashboard() {
                               {cleaner.workPhotos.length} work photo{cleaner.workPhotos.length === 1 ? '' : 's'}
                             </span>
                           </div>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className="text-xs text-gray-400">Availability</span>
+                            <AvailStrip availability={cleaner.availability} />
+                          </div>
                           <p className="text-xs text-gray-400 mt-1">
                             Applied {new Date(cleaner.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                           </p>
@@ -505,6 +537,7 @@ export default function AdminDashboard() {
                         <th className="text-left py-3 text-gray-500 font-medium">Jobs</th>
                         <th className="text-left py-3 text-gray-500 font-medium">Rating</th>
                         <th className="text-left py-3 text-gray-500 font-medium">Total Hrs</th>
+                        <th className="text-left py-3 text-gray-500 font-medium">Availability</th>
                         <th className="text-left py-3 text-gray-500 font-medium">Action</th>
                       </tr>
                     </thead>
@@ -522,6 +555,7 @@ export default function AdminDashboard() {
                             {cleaner.reviewCount > 0 ? `${cleaner.rating.toFixed(1)}★` : '—'}
                           </td>
                           <td className="py-3 text-gray-600">{cleaner.totalHours}h</td>
+                          <td className="py-3"><AvailStrip availability={cleaner.availability} /></td>
                           <td className="py-3">
                             <div className="flex items-center gap-3">
                               {cleaner.backgroundCheckStatus === 'pending' && (

@@ -21,6 +21,9 @@ export async function GET(request: NextRequest) {
         createdAt: true,
         _count: { select: { jobs: true } },
         workPhotos: { select: { id: true, driveItemId: true } },
+        availability: {
+          select: { dayOfWeek: true, startTime: true, endTime: true, isAvailable: true },
+        },
         payouts: {
           select: { amount: true, status: true },
         },
